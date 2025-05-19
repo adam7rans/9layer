@@ -1,5 +1,6 @@
-# Ignore music directory
+# Directories to ignore
 music/
+NA/
 
 # Python cache and build files
 __pycache__/
