@@ -22,30 +22,30 @@ sudo apt install ffmpeg  # Linux
 ### Basic Commands
 ```bash
 # Download video (best quality)
-9layer_downloader "https://youtube.com/watch?v=VIDEO_ID"
+python downloader.py "https://youtube.com/watch?v=VIDEO_ID"
 
 # Download audio only (high quality MP3)
-9layer_downloader "URL" --audio-only
+python downloader.py "URL" --audio-only
 
 # Custom download location
-9layer_downloader "URL" --path "~/Music/MyAlbum"
+python downloader.py "URL" --path "~/Music/MyAlbum"
 ```
 
 ### Advanced Features
 ```bash
 # Download entire playlist (video or audio)
-9layer_downloader "PLAYLIST_URL" --audio-only
+python downloader.py "PLAYLIST_URL" --audio-only
 
 # Download specific playlist items (e.g., tracks 5-10)
-9layer_downloader "PLAYLIST_URL" --playlist-items 5-10
+python downloader.py "PLAYLIST_URL" --playlist-items 5-10
 
 # Custom audio quality (192kbps)
-9layer_downloader "URL" --audio-only --quality 192
+python downloader.py "URL" --audio-only --quality 192
 ```
 
 ## 9layer Music Player
 ```bash
-9layer_player
+python 9layer.py
 ```
 
 ### Interactive Controls
@@ -62,8 +62,8 @@ sudo apt install ffmpeg  # Linux
 ## Project Structure
 ```
 9layer/
-├── 9layer_downloader.py - Main download script
-├── 9layer_player.py - Interactive music player
+├── downloader.py - Main download script
+├── 9layer.py - Interactive music player
 ├── music/ - Downloaded audio storage
 └── README.md - This documentation
 ```
