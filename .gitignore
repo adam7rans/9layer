@@ -1,6 +1,7 @@
 # Directories to ignore
 music/
 NA/
+SFX/
 
 # Python cache and build files
 __pycache__/
