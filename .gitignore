@@ -1,6 +1,6 @@
 # Directories to ignore
-music/           # Keep if you have a generic 'music' folder to ignore
-music_library/   # For the actual default download location
+music/
+music_library/
 NA/
 SFX/
 
@@ -12,7 +12,7 @@ __pycache__/
 
 # Virtual environments
 venv/
-backend/.venv/ # Specific to this project's backend venv
+backend/.venv/
 
 # IDE specific files
 .vscode/
