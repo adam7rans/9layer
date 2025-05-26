@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+yt-dlp
+python-dotenv 
+# Add other dependencies as needed, e.g., for specific DB drivers or utilities
+pytest
+httpx
