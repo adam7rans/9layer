@@ -1,5 +1,6 @@
 # Directories to ignore
-music/
+music/           # Keep if you have a generic 'music' folder to ignore
+music_library/   # For the actual default download location
 NA/
 SFX/
 
@@ -7,9 +8,11 @@ SFX/
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
-# Virtual environment
+# Virtual environments
 venv/
+backend/.venv/ # Specific to this project's backend venv
 
 # IDE specific files
 .vscode/
@@ -23,24 +26,5 @@ Thumbs.db
 *.log
 *.sqlite
 
-# Byte-compiled / optimized / DLL files
-*.pyc
-*.pyo
-*.pyd
-
-# Distribution / packaging
-.Python
-build/
-dist/
-*.egg-info/
-*.egg
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-*.cover
-*.py,cover
-.hypothesis/
+# Test-related cache
 .pytest_cache/
