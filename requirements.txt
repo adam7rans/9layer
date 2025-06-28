@@ -1,0 +1,22 @@
+# Core Dependencies
+python-dotenv>=0.19.0
+SQLAlchemy>=1.4.0
+psycopg2-binary>=2.9.1
+yt-dlp>=2021.12.1
+
+# Web Framework (if used)
+fastapi>=0.68.0
+uvicorn>=0.15.0
+
+# Database
+psycopg2>=2.9.1
+alembic>=1.7.4  # For database migrations
+
+# Development
+pytest>=6.2.5
+black>=21.9b0
+isort>=5.9.3
+mypy>=0.910
+
+# Optional
+python-multipart>=0.0.5  # For file uploads if needed
