@@ -8,7 +8,21 @@ import threading
 from queue import Queue, Empty
 from pathlib import Path
 import termios
-import collections # For deque
+import collections
+import signal
+import platform
+import ctypes
+import ctypes.util
+from datetime import datetime, timedelta
+
+# macOS-specific imports
+try:
+    import objc
+    from Foundation import NSBundle, NSObject, NSRunLoop, NSDate
+    from AppKit import NSApplication, NSApp, NSApplicationActivationPolicyAccessory
+    MACOS_AVAILABLE = True
+except ImportError:
+    MACOS_AVAILABLE = False
 
 # Cassette animation frames (simplified)
 CASSETTE_FRAMES = [
@@ -30,6 +44,7 @@ class MusicPlayer:
         self.music_files = []
         self.current_index = 0
         self.playback_process = None
+        self.caffeinate_process = None
         self.running = False
         self.command_queue = Queue()
         self.random_mode = True
@@ -42,6 +57,11 @@ class MusicPlayer:
         self.elapsed_time = 0
         self.progress = 0
         self.play_history = collections.deque(maxlen=50)
+        self.last_activity_time = time.time()
+        self.inactivity_timeout = 3600  # 1 hour in seconds
+        self.idle_monitor_thread = None
+        self._setup_sleep_prevention()
+        self._start_idle_monitor()
 
     def find_music_files(self):
         files = []
@@ -438,6 +458,124 @@ class MusicPlayer:
             new_pos = max(0,new_pos)
             self.play_current_song(start_time_sec=new_pos)
 
+
+    def _setup_sleep_prevention(self):
+        """Setup system sleep prevention on macOS
+        
+        Uses caffeinate with -i (idle sleep) to prevent system sleep while
+        allowing display sleep. The -i flag prevents idle system sleep, while
+        allowing the display to sleep.
+        """
+        if sys.platform != 'darwin':
+            return
+            
+        try:
+            # Disable App Nap
+            if MACOS_AVAILABLE:
+                bundle = NSBundle.mainBundle()
+                if bundle:
+                    info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
+                    if info:
+                        info['NSAppSleepDisabled'] = True
+            
+            # Kill any existing caffeinate processes
+            try:
+                subprocess.run(['pkill', '-f', 'caffeinate'], 
+                             stdout=subprocess.PIPE, 
+                             stderr=subprocess.PIPE)
+            except Exception:
+                pass
+                
+            # Start caffeinate with -i to prevent system sleep but allow display sleep
+            # -i: Prevent system sleep, but allow display sleep
+            self.caffeinate_process = subprocess.Popen(
+                ['caffeinate', '-i'],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE
+            )
+            print("Sleep prevention: System will not sleep, but display may sleep normally")
+                
+        except Exception as e:
+            print(f"Warning: Could not prevent system sleep: {e}")
+            print("Note: Your system might go to sleep, which could stop audio playback")
+
+    def _cleanup_sleep_prevention(self):
+        """Clean up sleep prevention"""
+        if sys.platform != 'darwin':
+            return
+            
+        # Clean up our process if it exists
+        if hasattr(self, 'caffeinate_process') and self.caffeinate_process:
+            try:
+                self.caffeinate_process.terminate()
+                self.caffeinate_process.wait(timeout=2)
+            except (subprocess.TimeoutExpired, ProcessLookupError):
+                if self.caffeinate_process:
+                    self.caffeinate_process.kill()
+            self.caffeinate_process = None
+        
+        # Clean up any other caffeinate processes
+        try:
+            subprocess.run(['pkill', '-f', 'caffeinate'], 
+                         stdout=subprocess.PIPE, 
+                         stderr=subprocess.PIPE)
+        except Exception:
+            pass
+
+    def _start_idle_monitor(self):
+        """Start monitoring for user inactivity"""
+        self.idle_monitor_thread = threading.Thread(target=self._idle_monitor_loop, daemon=True)
+        self.idle_monitor_thread.start()
+
+    def _idle_monitor_loop(self):
+        """Monitor user activity and shut down after timeout"""
+        while self.running:
+            idle_time = self._get_idle_time()
+            if idle_time > self.inactivity_timeout:
+                print("\nInactivity timeout reached. Shutting down...")
+                self.stop()
+                os._exit(0)
+            time.sleep(10)  # Check every 10 seconds
+
+    def _get_idle_time(self):
+        """Get system idle time in seconds"""
+        if sys.platform == 'darwin':
+            try:
+                # Use ctypes to call into the macOS CoreGraphics framework
+                ctypes.cdll.LoadLibrary(ctypes.util.find_library('CoreGraphics'))
+                event = ctypes.c_uint32(0)
+                event = ctypes.c_uint64.in_dll(ctypes.cdll.CoreGraphics, 'kCGAnyInputEventType')
+                
+                # CGEventSourceSecondsSinceLastEventType
+                idle_time = ctypes.c_double.in_dll(
+                    ctypes.cdll.CoreGraphics, 
+                    'CGEventSourceSecondsSinceLastEventType'
+                )(
+                    ctypes.c_uint32(0),  # kCGEventSourceStateCombinedSessionState
+                    ctypes.c_uint32(event.value)  # kCGAnyInputEventType
+                )
+                return idle_time
+            except Exception as e:
+                # Fallback to simpler method if the above fails
+                return time.time() - self.last_activity_time
+        return time.time() - self.last_activity_time
+
+    def update_activity(self):
+        """Update the last activity timestamp"""
+        self.last_activity_time = time.time()
+
+    def cleanup(self):
+        self.running = False
+        if self.playback_process:
+            try:
+                self.playback_process.terminate()
+                self.playback_process.wait(timeout=2)
+            except (subprocess.TimeoutExpired, ProcessLookupError):
+                if self.playback_process:
+                    self.playback_process.kill()
+            self.playback_process = None
+        self._cleanup_sleep_prevention()
 
     def input_handler(self):
         import tty 

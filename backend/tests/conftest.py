@@ -37,14 +37,35 @@ def manage_testing_env_variable():
 
 @pytest.fixture(scope="session")
 def db_engine():
+    # Use a test database for PostgreSQL
+    test_db_url = "postgresql://postgres:postgres@localhost:5432/music_player_test"
     engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool
+        test_db_url,
+        pool_pre_ping=True
     )
-    diagnostic_log(f"db_engine (session-scoped): Engine created.")
+    
+    # Create test database if it doesn't exist
+    import psycopg2
+    from psycopg2 import sql
+    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+    
+    # Connect to default postgres database to create test database
+    conn = psycopg2.connect("postgresql://postgres:postgres@localhost:5432/postgres")
+    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+    cursor = conn.cursor()
+    
+    # Drop and recreate test database
+    cursor.execute("DROP DATABASE IF EXISTS music_player_test")
+    cursor.execute("CREATE DATABASE music_player_test")
+    cursor.close()
+    conn.close()
+    
+    diagnostic_log(f"db_engine (session-scoped): PostgreSQL Engine created.")
     yield engine
-    diagnostic_log(f"db_engine (session-scoped): Engine closed/disposed (implicitly).")
+    
+    # Clean up after tests
+    engine.dispose()
+    diagnostic_log(f"db_engine (session-scoped): PostgreSQL Engine closed/disposed.")
 
 @pytest.fixture(scope="function")
 def setup_database_tables(db_engine):

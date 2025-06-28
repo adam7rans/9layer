@@ -1,74 +1,66 @@
 #!/usr/bin/env python3
 import sys
-import sqlite3
 from pathlib import Path
 import os
 from yt_dlp import YoutubeDL
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from datetime import datetime
 
-# Database setup
-DB_PATH = Path(__file__).parent / 'music_metadata.db'
+# Import our SQLAlchemy models and session
+from db_models import SessionLocal, Album, Track, Artist, init_db
 
-def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        # Albums/Playlists table (combined)
-        conn.execute('''CREATE TABLE IF NOT EXISTS albums
-                     (id TEXT PRIMARY KEY,
-                      title TEXT,
-                      artist TEXT,
-                      type TEXT CHECK(type IN ('album', 'playlist')),
-                      url TEXT)''')
-        
-        # Tracks table
-        conn.execute('''CREATE TABLE IF NOT EXISTS tracks
-                     (id TEXT PRIMARY KEY,
-                      title TEXT,
-                      album_id TEXT,
-                      position INTEGER,
-                      url TEXT,
-                      file_path TEXT,
-                      download_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                      FOREIGN KEY(album_id) REFERENCES albums(id))''')
-        
-        # Optional artists table
-        conn.execute('''CREATE TABLE IF NOT EXISTS artists
-                     (name TEXT PRIMARY KEY,
-                      description TEXT)''')
-        conn.commit()
-
+# Initialize the database tables
 init_db()
 
 def store_metadata(info, file_path):
-    with sqlite3.connect(DB_PATH) as conn:
+    db = SessionLocal()
+    try:
         # Determine if this is a playlist or album
         is_playlist = 'playlist_id' in info
         album_id = info['playlist_id'] if is_playlist else f"manual_{info['id']}"
         
-        # Insert album/playlist
-        conn.execute('''INSERT OR IGNORE INTO albums
-                     (id, title, artist, type, url)
-                     VALUES (?, ?, ?, ?, ?)''',
-                     (album_id,
-                      info.get('playlist_title') if is_playlist else info.get('album', 'Unknown Album'),
-                      info.get('artist'),
-                      'playlist' if is_playlist else 'album',
-                      info.get('webpage_url')))
+        # Insert or get album/playlist
+        album = db.query(Album).filter(Album.id == album_id).first()
+        if not album:
+            album = Album(
+                id=album_id,
+                title=info.get('playlist') or info.get('title'),
+                artist=info.get('uploader'),
+                type='playlist' if is_playlist else 'album',
+                url=info.get('webpage_url')
+            )
+            db.add(album)
         
-        # Insert track
-        conn.execute('''INSERT OR REPLACE INTO tracks
-                     (id, title, album_id, position, url, file_path)
-                     VALUES (?, ?, ?, ?, ?, ?)''',
-                     (info['id'],
-                      info.get('title'),
-                      album_id,
-                      info.get('playlist_index', 1) if is_playlist else info.get('track_number', 1),
-                      info.get('webpage_url'),
-                      file_path))
+        # Insert or get track
+        track = db.query(Track).filter(Track.id == info['id']).first()
+        if not track:
+            track = Track(
+                id=info['id'],
+                title=info.get('title'),
+                album_id=album_id,
+                position=info.get('playlist_index', 1) if is_playlist else info.get('track_number', 1),
+                url=info.get('webpage_url'),
+                file_path=str(file_path)
+            )
+            db.add(track)
         
-        # Optional: Store artist separately
-        if artist := info.get('artist'):
-            conn.execute('''INSERT OR IGNORE INTO artists (name) VALUES (?)''', (artist,))
+        # Insert or get artist if available
+        if artist_name := info.get('artist') or info.get('uploader'):
+            artist = db.query(Artist).filter(Artist.name == artist_name).first()
+            if not artist:
+                artist = Artist(name=artist_name)
+                db.add(artist)
         
-        conn.commit()
+        db.commit()
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error storing metadata: {e}")
+        return False
+    finally:
+        db.close()
 
 def download_video(url, audio_only=False, format=None, download_path=None):
     # Convert YouTube Music URLs to standard YouTube format
@@ -120,13 +112,32 @@ def download_video(url, audio_only=False, format=None, download_path=None):
             if 'entries' in info:  # Playlist
                 for entry in info['entries']:
                     if entry:
-                        store_metadata(entry, ydl.prepare_filename(entry))
+                        # Ensure we have the full entry info
+                        if '_type' in entry and entry['_type'] == 'url':
+                            # This is a partial entry, need to get full info
+                            try:
+                                entry = ydl.extract_info(entry['url'], download=False)
+                            except Exception as e:
+                                print(f"Error getting full info for {entry.get('url')}: {e}")
+                                continue
+                        
+                        # Prepare the output filename
+                        try:
+                            out_file = ydl.prepare_filename(entry)
+                            print(f"Storing metadata for: {out_file}")
+                            store_metadata(entry, out_file)
+                        except Exception as e:
+                            print(f"Error storing metadata for {entry.get('title')}: {e}")
             else:  # Single track
-                store_metadata(info, ydl.prepare_filename(info))
+                out_file = ydl.prepare_filename(info)
+                print(f"Storing metadata for: {out_file}")
+                store_metadata(info, out_file)
             
         print("\nDownload completed successfully!")
     except Exception as e:
         print(f"\nError downloading video: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 def progress_hook(d):
     if d['status'] == 'downloading':
@@ -138,43 +149,78 @@ def progress_hook(d):
 
 def is_playlist_downloaded(playlist_id):
     """Check if a playlist is already fully downloaded"""
-    with sqlite3.connect(DB_PATH) as conn:
-        # Check if playlist exists in albums table
-        playlist_exists = conn.execute(
-            "SELECT 1 FROM albums WHERE id = ? AND type = 'playlist'",
-            (playlist_id,)
-        ).fetchone()
+    db = SessionLocal()
+    try:
+        # Get playlist info
+        playlist = db.query(
+            Album.id,
+            Album.title,
+            func.count(Track.id).label('track_count'),
+            Album.url
+        ).outerjoin(
+            Track, Album.id == Track.album_id
+        ).filter(
+            Album.id == playlist_id
+        ).group_by(Album.id).first()
         
-        if not playlist_exists:
+        if not playlist:
             return False
             
-        # Check if all tracks are downloaded
-        track_count = conn.execute(
-            """SELECT COUNT(*) FROM tracks t
-               JOIN albums a ON t.album_id = a.id
-               WHERE a.id = ?""",
-            (playlist_id,)
-        ).fetchone()[0]
+        # Get total tracks in the playlist from YouTube
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,
+            'force_generic_extractor': True
+        }
         
-        # Get expected track count from YouTube
-        with YoutubeDL({'quiet': True}) as ydl:
-            info = ydl.extract_info(
-                f"https://www.youtube.com/playlist?list={playlist_id}",
-                download=False
-            )
-            expected_count = len(info['entries']) if 'entries' in info else 0
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(playlist.url, download=False)
+            if not info or 'entries' not in info:
+                return False
+                
+            total_tracks = len(info['entries'])
+            
+        # Compare counts
+        return playlist.track_count >= total_tracks if total_tracks > 0 else False
         
-        return track_count >= expected_count
+    except Exception as e:
+        print(f"Error checking playlist download status: {e}")
+        return False
+    finally:
+        db.close()
 
 def download_missing_playlists(playlist_urls):
     """Download only missing playlists from a list"""
-    for url in playlist_urls:
-        playlist_id = url.split('list=')[1]
-        if not is_playlist_downloaded(playlist_id):
-            print(f"Downloading missing playlist: {playlist_id}")
-            download_video(url, audio_only=True)
+    db = SessionLocal()
+    try:
+        # Get existing playlist IDs from database
+        existing_playlists = {row[0] for row in db.query(Album.id).filter(Album.type == 'playlist').all()}
+        
+        # Check which playlists need to be downloaded
+        playlists_to_download = []
+        
+        for url in playlist_urls:
+            # Extract playlist ID from URL
+            if 'list=' in url:
+                playlist_id = url.split('list=')[1].split('&')[0]
+                if playlist_id not in existing_playlists:
+                    playlists_to_download.append(url)
+            else:
+                print(f"Skipping invalid playlist URL: {url}")
+        
+        # Download missing playlists
+        if playlists_to_download:
+            print(f"Found {len(playlists_to_download)} new playlists to download")
+            for url in playlists_to_download:
+                print(f"\nDownloading playlist: {url}")
+                download_video(url, audio_only=True)
         else:
-            print(f"Playlist {playlist_id} already downloaded")
+            print("All playlists are already downloaded")
+            
+    except Exception as e:
+        print(f"Error processing playlists: {e}")
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or len(sys.argv) > 5:
