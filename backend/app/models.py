@@ -51,6 +51,7 @@ class Track(Base):
     url = Column(String, nullable=True) # URL of the track on YouTube
     file_path = Column(String, unique=True, nullable=False) # Path to the downloaded file
     download_date = Column(DateTime(timezone=True), server_default=func.now())
+    likeability = Column(Integer, default=0, nullable=False)  # Tracks user preference, default is neutral (0)
     # Add other fields as needed, e.g., duration, genre, etc.
 
     album = relationship("Album", back_populates="tracks")
