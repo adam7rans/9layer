@@ -32,22 +32,22 @@ MusicPlayer v2 aims to evolve the existing command-line music player into a full
 
 ---
 
-### **[ ] Phase 0: Repository Hygiene & Backend Preparation**
+### **[x] Phase 0: Repository Hygiene & Backend Preparation**
 *   **Milestone:** A clean, well-structured backend codebase ready for new feature development.
 
-*   **[ ] Task 0.1: Consolidate Helper Modules**
+*   **[x] Task 0.1: Consolidate Helper Modules**
     *   **Description:** Move `files.py`, `playback.py`, `db.py`, `system.py`, and `ui.py` into a new `musicplayer/helpers/` directory.
     *   **Acceptance Criteria:** All specified files are moved, and the application remains functional after updating all internal imports.
 
-*   **[ ] Task 0.2: Establish Project Dependencies**
+*   **[x] Task 0.2: Establish Project Dependencies**
     *   **Description:** Create a `pyproject.toml` file and a `requirements.txt` with pinned versions of essential libraries (e.g., `sqlalchemy`, `python-dotenv`, `fastapi`).
     *   **Acceptance Criteria:** The `pyproject.toml` and `requirements.txt` files are present and contain the necessary dependencies with specific versions. A virtual environment can be successfully created and all packages installed from this file.
 
-*   **[ ] Task 0.3: Expand Unit Test Skeletons**
+*   **[x] Task 0.3: Expand Unit Test Skeletons**
     *   **Description:** For each helper module, create basic unit test files with placeholder tests for future implementation.
     *   **Acceptance Criteria:** Each helper module has a corresponding test file in the `tests/` directory with at least one placeholder test function.
 
-*   **[ ] Task 0.4: Update Documentation**
+*   **[x] Task 0.4: Update Documentation**
     *   **Description:** Update the `README.md` file to reflect the new project structure and explain the layout of the `musicplayer/` package.
     *   **Acceptance Criteria:** The `README.md` clearly explains the new directory tree and the purpose of the core modules.
 
@@ -56,7 +56,7 @@ MusicPlayer v2 aims to evolve the existing command-line music player into a full
 ### **[ ] Phase 1: Service/API Layer**
 *   **Milestone:** A functional API server that can handle playback commands and provide state updates.
 
-*   **[ ] Task 1.1: Choose and Scaffold an HTTP Server**
+*   **[x] Task 1.1: Choose and Scaffold an HTTP Server**
     *   **Description:** Initialize a FastAPI application.
     *   **Acceptance Criteria:** A basic FastAPI server is running and accessible.
 

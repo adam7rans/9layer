@@ -20,12 +20,15 @@ def __getattr__(name):
         return _imp("musicplayer.controller").MusicPlayer
     if name in {
         "config",
+        "controller",
+    }:
+        return _imp(f"musicplayer.{name}")
+    if name in {
         "files",
         "ui",
         "db",
         "playback",
         "system",
-        "controller",
     }:
-        return _imp(f"musicplayer.{name}")
+        return _imp(f"musicplayer.helpers.{name}")
     raise AttributeError(name)

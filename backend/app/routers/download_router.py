@@ -30,8 +30,15 @@ async def download_music_url_endpoint(
     return result
 
 @router.get("/tracks", response_model=List[schemas.Track])
-async def list_tracks_endpoint(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    tracks = db.query(models.Track).order_by(models.Track.download_date.desc()).offset(skip).limit(limit).all()
+async def list_tracks_endpoint(search: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    if search:
+        tracks = db.query(models.Track).filter(
+            models.Track.title.ilike(f"%{search}%") |
+            models.Track.artist.ilike(f"%{search}%") |
+            models.Track.album.ilike(f"%{search}%")
+        ).order_by(models.Track.download_date.desc()).offset(skip).limit(limit).all()
+    else:
+        tracks = db.query(models.Track).order_by(models.Track.download_date.desc()).offset(skip).limit(limit).all()
     return tracks
 
 @router.get("/albums", response_model=List[schemas.Album])
