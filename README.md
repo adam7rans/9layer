@@ -87,14 +87,26 @@ python 9layer.py
 ## Project Structure
 ```
 9layer/
-├── downloader.py      # Main download script
-├── 9layer.py          # Interactive music player
-├── db_models.py       # Database models
-├── music/             # Downloaded audio storage
-├── migrations/        # Database migrations
-├── .env.example      # Example environment config
-├── requirements.txt   # Python dependencies
-└── README.md         # This documentation
+├── musicplayer/         # Core music player package
+│   ├── __init__.py      # Package initializer
+│   ├── cli.py           # Command-line interface
+│   ├── controller.py    # Main application logic
+│   ├── config.py        # Configuration handling
+│   └── helpers/         # Helper modules
+│       ├── __init__.py  # Helpers package initializer
+│       ├── files.py     # File system operations
+│       ├── playback.py  # Playback management
+│       ├── db.py        # Database interactions
+│       ├── system.py    # System-level utilities
+│       └── ui.py        # Terminal UI components
+├── tests/               # Unit and integration tests
+├── backend/             # FastAPI backend
+├── music/               # Downloaded audio storage
+├── migrations/          # Database migrations
+├── .env                 # Environment variables
+├── requirements.txt     # Python dependencies
+├── pyproject.toml       # Project configuration
+└── README.md            # This documentation
 ```
 
 ## Development
