@@ -53,53 +53,53 @@ MusicPlayer v2 aims to evolve the existing command-line music player into a full
 
 ---
 
-### **[ ] Phase 1: Service/API Layer**
+### **[x] Phase 1: Service/API Layer**
 *   **Milestone:** A functional API server that can handle playback commands and provide state updates.
 
 *   **[x] Task 1.1: Choose and Scaffold an HTTP Server**
     *   **Description:** Initialize a FastAPI application.
     *   **Acceptance Criteria:** A basic FastAPI server is running and accessible.
 
-*   **[ ] Task 1.2: Implement Core API Endpoints**
+*   **[x] Task 1.2: Implement Core API Endpoints**
     *   **Description:** Create the following REST endpoints:
         *   `GET /tracks?search=`: To list tracks, supporting searches by album, artist, and title.
         *   `GET /current`: To get the current playback state (track, time, duration, volume, artwork URL).
         *   `POST /command`: To handle commands like play, pause, next, previous, volume set, and seek.
     *   **Acceptance Criteria:** Each endpoint is functional and returns the expected data or performs the specified action.
 
-*   **[ ] Task 1.3: Implement Real-Time Event Streaming**
+*   **[x] Task 1.3: Implement Real-Time Event Streaming**
     *   **Description:** Set up a WebSocket channel at `ws://…/events` to stream playback state updates in real-time.
     *   **Acceptance Criteria:** A WebSocket client can connect to the endpoint and receive state change messages when playback is manipulated.
 
-*   **[ ] Task 1.4: Refactor MusicPlayer Core Logic**
+*   **[x] Task 1.4: Refactor MusicPlayer Core Logic**
     *   **Description:** Modify the `MusicPlayer` class to use an in-process message bus for handling commands and state, decoupling it from the API handlers.
     *   **Acceptance Criteria:** API handlers now enqueue commands instead of directly calling `MusicPlayer` methods.
 
-*   **[ ] Task 1.5: Configure CORS and Environment Variables**
+*   **[x] Task 1.5: Configure CORS and Environment Variables**
     *   **Description:** Implement CORS (Cross-Origin Resource Sharing) middleware and configure the application to use a `.env` file for settings like `PORT`, `HOST`, and `STATIC_DIR`.
     *   **Acceptance Criteria:** The API can be called from a different domain (the frontend application), and server configuration is managed through environment variables.
 
-*   **[ ] Task 1.6: Add API Endpoint Tests**
+*   **[x] Task 1.6: Add API Endpoint Tests**
     *   **Description:** Write unit tests for each API endpoint using `httpx` and `pytest`.
     *   **Acceptance Criteria:** Tests for all endpoints are implemented and passing, covering success and error cases.
 
 ---
 
-### **[ ] Phase 2: Next.js/React Front-end Scaffold**
+### **[x] Phase 2: Next.js/React Front-end Scaffold**
 *   **Milestone:** A basic, non-functional frontend application with the core component structure in place.
 
-*   **[ ] Task 2.1: Initialize Next.js Application**
+*   **[x] Task 2.1: Initialize Next.js Application**
     *   **Description:** Use `npx create-next-app` to scaffold a new TypeScript-based Next.js project.
     *   **Acceptance Criteria:** A new Next.js application is created and runnable.
 
-*   **[ ] Task 2.2: Define Directory and Component Structure**
+*   **[x] Task 2.2: Define Directory and Component Structure**
     *   **Description:** Create the following directories and empty component files:
         *   `app/`: For pages like `/` (player) and `/search`.
         *   `components/`: `Timeline.tsx`, `SearchBox.tsx`, `AlbumArt.tsx`, `VolumeSlider.tsx`, `Controls.tsx`.
         *   `hooks/`: `usePlayerSocket.ts`, `useKeyboardShortcuts.ts`.
     *   **Acceptance Criteria:** The specified directory and file structure is present in the frontend repository.
 
-*   **[ ] Task 2.3: Choose and Configure a Styling Solution**
+*   **[x] Task 2.3: Choose and Configure a Styling Solution**
     *   **Description:** Set up either Tailwind CSS or a CSS-in-JS library like `styled-components`.
     *   **Acceptance Criteria:** The chosen styling solution is configured, and a simple styled element is visible in the application.
 
