@@ -1,26 +1,29 @@
-@router.post("/command", response_model=schemas.PlaybackActionResponse)
-async def command_endpoint(request: schemas.CommandRequest, db: Session = Depends(get_db)):
+import logging
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from .. import schemas
+from ..database import get_db
+from ..services.playback_service import playback_manager
+from ..message_bus import command_queue
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+@router.post("/command")
+async def command_endpoint(request: schemas.CommandRequest):
     logger.info(f"API: Command received: {request.command}")
-    if request.command == "play":
-        result = playback_manager.play_track(request.track_id, db)
-    elif request.command == "pause":
-        result = playback_manager.pause_playback()
-    elif request.command == "resume":
-        result = playback_manager.resume_playback()
-    elif request.command == "stop":
-        result = playback_manager.stop_playback()
-    elif request.command == "next":
-        result = playback_manager.play_next_track(db)
-    elif request.command == "previous":
-        result = playback_manager.play_previous_track(db)
-    elif request.command == "volume":
-        result = playback_manager.set_volume(request.value)
-    elif request.command == "seek":
-        result = playback_manager.seek_to(request.value)
-    else:
-        raise HTTPException(status_code=400, detail="Invalid command")
+    command = {"action": request.command}
+    if request.track_id:
+        command["track_id"] = request.track_id
+    if request.value:
+        command["value"] = request.value
+    command_queue.put(command)
+    return {"status": "command sent"}
 
-    if result.get("status") == "error":
-        raise HTTPException(status_code=400, detail=result.get("message"))
-
-    return result
+@router.get("/current", response_model=schemas.PlaybackState)
+async def get_current_playback_state():
+    state = playback_manager.get_player_status()
+    if not state:
+        raise HTTPException(status_code=404, detail="No active playback session.")
+    return state

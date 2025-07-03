@@ -16,6 +16,11 @@ MUSIC_DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 # Logging configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
+# Server configuration
+PORT = int(os.getenv("PORT", 8000))
+HOST = os.getenv("HOST", "0.0.0.0")
+STATIC_DIR = os.getenv("STATIC_DIR", "../frontend/static")
+
 # You can add other configurations here, e.g., yt-dlp format options
 AUDIO_FORMAT = "bestaudio/best"
 AUDIO_POSTPROCESSOR_OPTS = {

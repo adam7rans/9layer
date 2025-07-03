@@ -109,3 +109,23 @@ class DownloadResponse(BaseModel):
     status: str
     message: Optional[str] = None
     downloaded_tracks: List[Track] = []
+
+class CommandRequest(BaseModel):
+    command: str
+    track_id: Optional[str] = None
+    value: Optional[int] = None
+
+class PlaybackState(BaseModel):
+    track_id: Optional[str] = None
+    path: Optional[str] = None
+    duration: int = 0
+    elapsed_time: float = 0.0
+    is_playing: bool = False
+    is_paused: bool = False
+    volume: int = 0
+    random_mode: bool = False
+    auto_play_next: bool = False
+    play_history_size: int = 0
+    message: Optional[str] = None
+    status: Optional[str] = None
+
