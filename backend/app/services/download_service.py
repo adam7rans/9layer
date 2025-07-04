@@ -56,6 +56,12 @@ def store_track_metadata(db: Session, track_info: dict, file_path: str):
         )
         db.add(db_album)
         # logger.info(f"Adding new album/playlist: {album_title}")
+    elif not db_album.artist_name and artist_name:
+        # If album exists but is missing an artist name, update it.
+        # This can happen if tracks from the same album/playlist are added over time
+        # and the artist name was only available on later tracks.
+        db_album.artist_name = artist_name
+        logger.info(f"Updating existing album '{db_album.title}' with artist: {artist_name}")
 
     # Create track
     # Check if track already exists by ID

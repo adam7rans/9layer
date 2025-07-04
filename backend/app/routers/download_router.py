@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
+from sqlalchemy import or_
 from typing import List
-from .. import schemas, models 
+from .. import schemas, models
 from ..database import get_db
-from ..services import download_service 
+from ..services import download_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -29,16 +30,21 @@ async def download_music_url_endpoint(
     logger.info(f"Download successful for {request.url}, tracks processed: {len(result['downloaded_tracks'])}")
     return result
 
-@router.get("/tracks", response_model=List[schemas.Track])
+@router.get("/tracks", response_model=List[schemas.TrackInfo])
 async def list_tracks_endpoint(search: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    query = db.query(models.Track).join(models.Album)
+
     if search:
-        tracks = db.query(models.Track).filter(
-            models.Track.title.ilike(f"%{search}%") |
-            models.Track.artist.ilike(f"%{search}%") |
-            models.Track.album.ilike(f"%{search}%")
-        ).order_by(models.Track.download_date.desc()).offset(skip).limit(limit).all()
-    else:
-        tracks = db.query(models.Track).order_by(models.Track.download_date.desc()).offset(skip).limit(limit).all()
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                models.Track.title.ilike(search_term),
+                models.Album.title.ilike(search_term),
+                models.Album.artist_name.ilike(search_term)
+            )
+        )
+
+    tracks = query.order_by(models.Track.download_date.desc()).offset(skip).limit(limit).all()
     return tracks
 
 @router.get("/albums", response_model=List[schemas.Album])

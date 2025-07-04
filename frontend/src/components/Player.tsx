@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import usePlayerSocket from '@/hooks/usePlayerSocket';
 import Timeline from './Timeline';
+import SearchBox from './SearchBox';
+import AlbumArt from './AlbumArt';
 import { TrackInfo, PlayerState as PlayerStateType } from '@/types/websocket';
 
 interface PlayerState extends PlayerStateType {
@@ -28,8 +30,8 @@ const Player = () => {
     previous, 
     seek,
     setVolume,
+    playTrack,
     reconnect,
-    sendCommand,
     addEventListener
   } = usePlayerSocket();
 
@@ -48,6 +50,14 @@ const Player = () => {
     seek(time);
   }, [isConnected, seek]);
 
+  // Handle track selection from search
+  const handleTrackSelect = useCallback((track: TrackInfo) => {
+    if (!isConnected) return;
+    
+    console.log('Playing track:', track);
+    playTrack({ trackId: track.id });
+  }, [isConnected, playTrack]);
+
   // Handle player state updates from WebSocket
   useEffect(() => {
     const handleStateUpdate = (update: Partial<PlayerState>) => {
@@ -59,17 +69,16 @@ const Player = () => {
     };
 
     // Subscribe to player state updates
-    const cleanup = addEventListener(handleStateUpdate);
+    const unsubscribe = addEventListener(handleStateUpdate);
     
-    // Initial state fetch
-    if (isConnected) {
-      sendCommand('getState');
-    }
+    // Initial state fetch - the WebSocket server will send the initial state on connection
+    // No need to explicitly request it
 
+    // Clean up the event listener when the component unmounts or dependencies change
     return () => {
-      cleanup();
+      unsubscribe();
     };
-  }, [addEventListener, isConnected, sendCommand]);
+  }, [addEventListener, isConnected]);
 
   // Handle connection errors
   useEffect(() => {
@@ -89,6 +98,22 @@ const Player = () => {
   // Render player UI
   return (
     <div className="space-y-4 p-4 max-w-md mx-auto bg-white rounded-lg shadow">
+      {/* Search Box */}
+      <div className="mb-4">
+        <SearchBox 
+          onTrackSelect={handleTrackSelect} 
+          disabled={!isConnected}
+        />
+      </div>
+      
+      {/* Album Art */}
+      <div className="flex justify-center mb-4">
+        <AlbumArt 
+          track={playerState.currentTrack} 
+          className="w-64 h-64 md:w-80 md:h-80"
+        />
+      </div>
+      
       {/* Connection status */}
       <div className={`text-sm font-medium mb-4 ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
         {isConnected ? 'Connected' : 'Disconnected'}

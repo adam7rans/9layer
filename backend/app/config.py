@@ -2,12 +2,12 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Load .env file from the `backend` directory
-dotenv_path = Path(__file__).resolve().parent.parent / '.env'
+# Load .env file from the project root directory
+dotenv_path = Path(__file__).resolve().parent.parent.parent / '.env'
 load_dotenv(dotenv_path)
 
-# Default music directory relative to the backend directory
-DEFAULT_MUSIC_DIR = Path(__file__).resolve().parent.parent / "downloaded_music"
+# Default music directory relative to the project root
+DEFAULT_MUSIC_DIR = Path(__file__).resolve().parent.parent.parent / "downloaded_music"
 MUSIC_DOWNLOAD_DIR = Path(os.getenv("MUSIC_DOWNLOAD_DIR", DEFAULT_MUSIC_DIR))
 
 # Ensure the download directory exists

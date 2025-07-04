@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl, Field, validator
+from pydantic import BaseModel, HttpUrl, Field, validator, computed_field
 from typing import List, Optional
 from datetime import datetime
 from .models import AlbumType # Import the enum
@@ -52,6 +52,26 @@ class Album(AlbumBase):
     # If you want to include tracks when fetching an album:
     tracks: List[Track] = [] # This will be populated by SQLAlchemy relationship if accessed
     
+    model_config = {'from_attributes': True}
+
+
+class AlbumInfo(BaseModel):
+    id: Optional[str] = None
+    title: Optional[str] = None
+    artist_name: Optional[str] = None
+
+    model_config = {'from_attributes': True}
+
+class TrackInfo(Track):
+    album: Optional[AlbumInfo] = None
+
+    @computed_field
+    @property
+    def artist(self) -> str:
+        if self.album and self.album.artist_name:
+            return self.album.artist_name
+        return "Unknown Artist"
+
     model_config = {'from_attributes': True}
         
 # Update Track to resolve potential circular dependency by using a forward reference string for Album

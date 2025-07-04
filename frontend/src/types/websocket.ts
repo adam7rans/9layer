@@ -35,5 +35,10 @@ export const WS_EVENTS = {
   PREVIOUS: 'previous',
   SEEK: 'seek',
   VOLUME: 'volume',
+  PLAY_TRACK: 'play_track',
   ERROR: 'error',
 } as const;
+
+export interface PlayTrackCommand {
+  trackId: string;
+}

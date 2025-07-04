@@ -6,7 +6,8 @@ import {
   PlayerStateUpdate, 
   EventHandler, 
   WebSocketMessage, 
-  WS_EVENTS 
+  WS_EVENTS,
+  PlayTrackCommand
 } from '@/types/websocket';
 
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -187,6 +188,9 @@ const usePlayerSocket = () => {
   const previous = useCallback(() => sendCommand(WS_EVENTS.PREVIOUS), [sendCommand]);
   const seek = useCallback((time: number) => sendCommand(WS_EVENTS.SEEK, { time }), [sendCommand]);
   const setVolume = useCallback((volume: number) => sendCommand(WS_EVENTS.VOLUME, { volume }), [sendCommand]);
+  const playTrack = useCallback((command: PlayTrackCommand) => 
+    sendCommand(WS_EVENTS.PLAY_TRACK, command), 
+  [sendCommand]);
 
   // Connect on mount and clean up on unmount
   useEffect(() => {
@@ -215,6 +219,7 @@ const usePlayerSocket = () => {
     previous,
     seek,
     setVolume,
+    playTrack,
   }), [
     connectionStatus,
     error,
@@ -229,6 +234,7 @@ const usePlayerSocket = () => {
     previous,
     seek,
     setVolume,
+    playTrack,
   ]);
 };
 
