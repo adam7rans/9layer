@@ -152,8 +152,7 @@ const SearchBox = ({ onTrackSelect, disabled = false }: SearchBoxProps) => {
           id: track.id || '',
           title: track.title || 'Unknown Title',
           artist: track.artist || 'Unknown Artist',
-          album: track.album || 'Unknown Album',
-          duration: track.duration || 0,
+          album: track.album?.title || 'Unknown Album',  // Extract title from album object
           artworkUrl: track.artwork_url || track.artworkUrl || null,
         };
         

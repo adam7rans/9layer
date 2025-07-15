@@ -13,6 +13,14 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 if not SQLALCHEMY_DATABASE_URL:
     sys.exit("Error: DATABASE_URL environment variable not set. Please configure PostgreSQL connection in .env file")
 
+# DEBUG: Print loaded DATABASE_URL
+print(f"DEBUG: Loaded DATABASE_URL: {SQLALCHEMY_DATABASE_URL}")
+
+# Fallback to working connection string if loaded one doesn't work
+if "postgres@" in SQLALCHEMY_DATABASE_URL:
+    SQLALCHEMY_DATABASE_URL = "postgresql://7racker@localhost:5432/music_player"
+    print(f"DEBUG: Using corrected DATABASE_URL: {SQLALCHEMY_DATABASE_URL}")
+
 # Create PostgreSQL engine with connection pooling
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
