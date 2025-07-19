@@ -2,6 +2,8 @@ import logging
 import threading
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 # Imports for routers and services needed by create_app or global instances
 from app.routers import download_router, playback_router, websocket_router
@@ -34,6 +36,11 @@ def create_app():
     app_instance.include_router(download_router.router, prefix="/api", tags=["download & library"])
     app_instance.include_router(playback_router.router, prefix="/api/player", tags=["playback control"]) # Or just /api and tag differentiate
     app_instance.include_router(websocket_router.router, prefix="/api/ws", tags=["websocket"])
+    
+    # Mount static files for serving audio
+    music_dir = Path("/Users/7racker/Documents/9layer/music")
+    if music_dir.exists():
+        app_instance.mount("/api/audio", StaticFiles(directory=str(music_dir)), name="audio")
 
     @app_instance.get("/")
     async def root():
@@ -66,8 +73,15 @@ def create_app():
     @app_instance.on_event("startup")
     async def startup_event():
         logger.info("Application startup initiated...") # Add if you want a startup log message
-        worker_thread = threading.Thread(target=playback_worker, daemon=True)
-        worker_thread.start()
+        # DISABLED: Start the playback worker thread (causes hanging issue)
+        # try:
+        #     worker_thread = threading.Thread(target=playback_worker, daemon=True)
+        #     worker_thread.start()
+        #     logger.info("Playback worker thread started successfully")
+        # except Exception as e:
+        #     logger.error(f"Failed to start playback worker: {e}")
+        logger.info("Playback worker disabled - using direct audio playback")
+        logger.info("Application startup complete.")
 
     @app_instance.on_event("shutdown")
     async def shutdown_event():
@@ -79,4 +93,11 @@ app = create_app() # Create the main app instance for uvicorn
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app, 
+        host="127.0.0.1",  # Try localhost instead of 0.0.0.0
+        port=8000,
+        log_level="debug",
+        access_log=True,
+        use_colors=True
+    )

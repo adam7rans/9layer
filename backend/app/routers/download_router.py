@@ -30,22 +30,59 @@ async def download_music_url_endpoint(
     logger.info(f"Download successful for {request.url}, tracks processed: {len(result['downloaded_tracks'])}")
     return result
 
+@router.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "API is working"}
+
+@router.get("/test-tracks")
+async def test_tracks():
+    """Test endpoint to bypass dependency injection"""
+    try:
+        from ..database import SessionLocal
+        db = SessionLocal()
+        try:
+            track = db.query(models.Track).filter(models.Track.file_path.isnot(None)).first()
+            if track:
+                return {
+                    "id": track.id,
+                    "title": track.title,
+                    "file_path": track.file_path,
+                    "status": "found"
+                }
+            else:
+                return {"status": "no_tracks"}
+        finally:
+            db.close()
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @router.get("/tracks", response_model=List[schemas.TrackInfo])
 async def list_tracks_endpoint(search: str = None, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    query = db.query(models.Track).join(models.Album)
+    try:
+        # Ultra-fast query for auto-play - get first available track without search
+        if not search and skip == 0 and limit == 1:
+            # Super fast query - get any one track with valid file_path
+            track = db.query(models.Track).filter(models.Track.file_path.isnot(None)).first()
+            return [track] if track else []
+        
+        # Regular query for search and pagination
+        query = db.query(models.Track)
 
-    if search:
-        search_term = f"%{search}%"
-        query = query.filter(
-            or_(
-                models.Track.title.ilike(search_term),
-                models.Album.title.ilike(search_term),
-                models.Album.artist_name.ilike(search_term)
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    models.Track.title.ilike(search_term),
+                    models.Track.artist.ilike(search_term)  # Use track.artist instead of album.artist_name
+                )
             )
-        )
 
-    tracks = query.order_by(models.Track.download_date.desc()).offset(skip).limit(limit).all()
-    return tracks
+        # Simple limit without expensive ordering - just get first available tracks
+        tracks = query.offset(skip).limit(limit).all()
+        return tracks
+    except Exception as e:
+        logger.error(f"Error in tracks endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.get("/albums", response_model=List[schemas.Album])
 async def list_albums_endpoint(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):

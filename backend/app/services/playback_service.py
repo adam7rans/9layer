@@ -64,6 +64,7 @@ class PlaybackManager:
         return int(seconds * typical_frames_per_sec)
 
     def _start_playback(self, track_path: str, start_offset_sec: float = 0.0):
+        # Stop any existing subprocess playback
         if self.playback_process:
             self.playback_process.terminate()
             try:
@@ -72,27 +73,11 @@ class PlaybackManager:
                 self.playback_process.kill()
             self.playback_process = None
 
-        cmd = [PLAYER_CMD, "-q"] # Quiet mode
-        
-        if start_offset_sec > 0:
-            frames_to_skip = self._seconds_to_frames(start_offset_sec)
-            if frames_to_skip > 0:
-                cmd.extend(["-k", str(frames_to_skip)])
-        
-        cmd.append(track_path)
-
-        try:
-            self.playback_process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            self.is_playing = True
-            self.is_paused = False
-            self.song_start_time_monotonic = time.monotonic()
-            logger.info(f"Playback started: {track_path} at offset {start_offset_sec}s. PID: {self.playback_process.pid}")
-        except FileNotFoundError:
-            logger.error(f"PLAYER_CMD '{PLAYER_CMD}' not found. Playback failed for {track_path}.")
-            self.is_playing = False # Ensure state reflects failure
-        except Exception as e:
-            logger.error(f"Failed to start playback process for {track_path}: {e}")
-            self.is_playing = False # Ensure state reflects failure
+        # Set playback state for browser-based audio
+        self.is_playing = True
+        self.is_paused = False
+        self.song_start_time_monotonic = time.monotonic()
+        logger.info(f"Browser playback started: {track_path} at offset {start_offset_sec}s")
     
     def _resolve_track_path(self, track_id: str, db: Session) -> Optional[str]:
         db_track = db.query(models.Track).filter(models.Track.id == track_id).first()
@@ -139,22 +124,24 @@ class PlaybackManager:
 
     def pause_playback(self):
         with self.lock:
-            if not self.is_playing or not self.playback_process:
+            if not self.is_playing:
                 return
 
             current_elapsed_segment = time.monotonic() - self.song_start_time_monotonic
             self.paused_at_elapsed_time += current_elapsed_segment
 
-            self.playback_process.terminate()
-            try:
-                self.playback_process.wait(timeout=0.5)
-            except subprocess.TimeoutExpired:
-                self.playback_process.kill()
-            self.playback_process = None
+            # Stop any subprocess if it exists
+            if self.playback_process:
+                self.playback_process.terminate()
+                try:
+                    self.playback_process.wait(timeout=0.5)
+                except subprocess.TimeoutExpired:
+                    self.playback_process.kill()
+                self.playback_process = None
 
             self.is_playing = False
             self.is_paused = True
-            logger.info(f"Playback paused for track {self.current_track_id} at {self.paused_at_elapsed_time:.2f}s")
+            logger.info(f"Browser playback paused for track {self.current_track_id} at {self.paused_at_elapsed_time:.2f}s")
 
     def resume_playback(self):
         with self.lock:
@@ -169,6 +156,7 @@ class PlaybackManager:
 
     def stop_playback(self):
         with self.lock:
+            # Stop any subprocess if it exists
             if self.playback_process:
                 self.playback_process.terminate()
                 try:
@@ -177,7 +165,7 @@ class PlaybackManager:
                     self.playback_process.kill()
                 self.playback_process = None
 
-            logger.info(f"Playback stopped for track {self.current_track_id}")
+            logger.info(f"Browser playback stopped for track {self.current_track_id}")
             self.is_playing = False
             self.is_paused = False
             self.song_start_time_monotonic = 0.0
@@ -257,26 +245,31 @@ class PlaybackManager:
 
     def get_player_status(self, db: Optional[Session] = None) -> Dict[str, Any]:
         with self.lock:
+            # Check if subprocess ended (legacy cleanup)
             if self.is_playing and self.playback_process and self.playback_process.poll() is not None:
-                logger.info(f"Playback process for {self.current_track_id} ended (song likely finished). PID: {self.playback_process.pid}")
-                self.is_playing = False
-                self.paused_at_elapsed_time = self.current_track_duration
+                logger.info(f"Legacy playback process for {self.current_track_id} ended. PID: {self.playback_process.pid}")
                 self.playback_process = None
-                
-                if self.auto_play_next and db:
-                    logger.info(f"Auto-playing next track after {self.current_track_id} finished.")
-                    self.play_next_track(db)
-                elif self.auto_play_next and not db:
-                    logger.warning("auto_play_next is True, but no DB session provided to get_player_status to fetch next track.")
-
 
             elapsed = self.get_current_elapsed_time()
             if self.current_track_duration > 0 and elapsed > self.current_track_duration:
                 elapsed = self.current_track_duration 
 
+            # Generate audio URL for browser playback
+            audio_url = None
+            if self.current_track_path:
+                # Convert file path to URL path for static serving
+                music_dir = Path("/Users/7racker/Documents/9layer/music")
+                track_path = Path(self.current_track_path)
+                if track_path.is_relative_to(music_dir):
+                    relative_path = track_path.relative_to(music_dir)
+                    audio_url = f"/api/audio/{relative_path}"
+                else:
+                    logger.warning(f"Track path {self.current_track_path} is not within music directory")
+
             return {
                 "track_id": self.current_track_id,
                 "path": self.current_track_path,
+                "audio_url": audio_url,
                 "duration": self.current_track_duration,
                 "elapsed_time": elapsed,
                 "is_playing": self.is_playing,
