@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  reactStrictMode: false, // Disable StrictMode to fix WebSocket connection issues
 };
 
 export default nextConfig;
