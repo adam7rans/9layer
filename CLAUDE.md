@@ -190,22 +190,68 @@ Add entries to `____docs/devlog.md` in this JSON format:
 }
 ```
 
-### Wrap-up Flow Commands
+## Session Wrap-up Workflow
 
-```bash
-# 1. Create devlog entry (manual - edit ____docs/devlog.md)
+At the end of each coding session, follow this standardized process to properly document and commit all work:
 
-# 2. Commit changes
-git add .
-git commit -m "type: description of changes"
+### 1. Create Detailed Commit Messages
+Write comprehensive commit messages that clearly describe:
+- **Problem**: What issue was being addressed
+- **Solution**: How the issue was resolved
+- **Files Modified**: List the key files that were changed
+- **Impact**: What the fix accomplishes for users
 
-# 3. Push to GitHub
-git push origin main
+Use conventional commit format:
+```
+fix: resolve shader compilation error in 9-Point Mesh Gradient
+
+- Fixed extra closing parenthesis in rand_offset function
+- Cleared build cache to ensure changes take effect
+- Updated both main site and video generator shader files
+
+Files modified:
+- site/src/lib/video-renderer/background-effects/effects/gradients/NinePointMeshGradientShader.ts
+- video-gen-and-proc/src/components/effects/ninePointMeshGradient/NinePointMeshGradientShader.ts
+
 ```
 
-### Development Tags
+### 2. Update Development Log
+Add a new entry to `____docs/dev_diary/devlog.md` at the top of the file 
 
-Use these tags for categorization:
+Follow this format:
+## Entries
+
+```json
+{
+  "timestamp": "2025-07-15T18:40:00Z",
+  "description": "fix: Resolve search functionality and populate database with music library",
+  "details": "Set up Python environment with pyenv, populated PostgreSQL database with 2,935 tracks from music library, fixed frontend search API data transformation issue where album objects were not properly mapped to strings",
+  "tags": ["backend", "frontend", "database", "search", "bugfix", "setup"],
+  "files_modified": [
+    "frontend/src/components/SearchBox.tsx", 
+    "backend/app/database.py",
+    "populate_database_simple.py"
+  ]
+}
+```
+
+---
+
+## Development Entry Format
+
+Each entry should be a JSON object with the following structure:
+
+```json
+{
+  "timestamp": "ISO 8601 timestamp",
+  "description": "Brief description in commit message format (type: description)",
+  "details": "Detailed explanation of changes, problems solved, and implementation notes",
+  "tags": ["relevant", "tags", "for", "categorization"],
+  "files_modified": ["array", "of", "modified", "files"]
+}
+```
+
+### Tags Guidelines
 - **backend**: Backend/API changes
 - **frontend**: Frontend/UI changes  
 - **database**: Database schema or data changes
@@ -218,3 +264,25 @@ Use these tags for categorization:
 - **refactor**: Code refactoring
 - **performance**: Performance improvements
 - **security**: Security-related changes
+
+
+### 3. Commit and Push Changes
+Execute the complete git workflow:
+```bash
+# Add all changes
+git add .
+
+# Create commit with detailed message
+git commit -m "[detailed commit message]"
+
+# Push to remote repository
+git push origin main
+```
+
+### 4. Verification
+Ensure all changes are properly committed by:
+- Checking `git status` shows no uncommitted changes
+- Verifying the commit appears in the remote repository
+- Confirming the dev log entry is present in `_docs/dev_diary/devlog.md`
+
+This workflow ensures comprehensive documentation of all development work and maintains a clear history of project evolution for future reference.
