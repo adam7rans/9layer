@@ -27,7 +27,7 @@ const usePlayerSocket = () => {
   // WebSocket URL - hardcoded for development
   const getWebSocketUrl = useCallback(() => {
     try {
-      const wsUrl = 'ws://localhost:8000/api/ws';
+      const wsUrl = 'ws://127.0.0.1:8000/api/ws';
       console.log('[WebSocket] Using URL:', wsUrl);
       return wsUrl;
     } catch (err) {
@@ -38,14 +38,20 @@ const usePlayerSocket = () => {
 
   // Clean up WebSocket connection
   const cleanup = useCallback(() => {
-    console.log('[WebSocket] Cleaning up...');
+    console.log('[WebSocket] Cleaning up...', {
+      hasWebSocket: !!ws.current,
+      readyState: ws.current?.readyState,
+      isMounted: isMounted.current
+    });
+    
     if (ws.current) {
       ws.current.onopen = null;
       ws.current.onclose = null;
       ws.current.onerror = null;
       ws.current.onmessage = null;
       
-      if (ws.current.readyState === WebSocket.OPEN) {
+      if (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING) {
+        console.log('[WebSocket] Closing WebSocket connection');
         ws.current.close();
       }
       
@@ -62,11 +68,22 @@ const usePlayerSocket = () => {
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const data: WebSocketMessage = JSON.parse(event.data);
-      console.log('[WebSocket] Message received:', data);
+      console.log('[WebSocket] Raw message received:', event.data);
+      console.log('[WebSocket] Parsed message:', data);
+      console.log('[WebSocket] Expected STATE_UPDATE event:', WS_EVENTS.STATE_UPDATE);
+      console.log('[WebSocket] Message type matches?', data.type === WS_EVENTS.STATE_UPDATE);
       
       if (data.type === WS_EVENTS.STATE_UPDATE && data.data) {
         const update: PlayerStateUpdate = data.data;
-        eventHandlers.current.forEach(handler => handler(update));
+        console.log('[WebSocket] Processing state update:', update);
+        console.log('[WebSocket] Number of event handlers:', eventHandlers.current.size);
+        
+        eventHandlers.current.forEach((handler, index) => {
+          console.log(`[WebSocket] Calling handler ${index + 1}/${eventHandlers.current.size}`);
+          handler(update);
+        });
+      } else {
+        console.log('[WebSocket] Message ignored - not a state update or no data');
       }
     } catch (err) {
       console.error('[WebSocket] Error processing message:', err);
@@ -75,14 +92,25 @@ const usePlayerSocket = () => {
 
   // Handle WebSocket errors
   const handleError = useCallback((event: Event) => {
-    console.error('[WebSocket] Error:', event);
+    console.error('[WebSocket] Error event fired:', event);
+    console.error('[WebSocket] Error details:', {
+      type: event.type,
+      target: event.target,
+      currentTarget: event.currentTarget
+    });
     setError(new Error('WebSocket connection error'));
     setConnectionStatus('disconnected');
   }, []);
 
   // Handle WebSocket close
   const handleClose = useCallback((event: CloseEvent) => {
-    console.log(`[WebSocket] Connection closed: ${event.code} ${event.reason}`);
+    console.log(`[WebSocket] Close event fired: ${event.code} ${event.reason}`);
+    console.log('[WebSocket] Close details:', {
+      code: event.code,
+      reason: event.reason,
+      wasClean: event.wasClean,
+      type: event.type
+    });
     setConnectionStatus('disconnected');
 
     if (!isMounted.current || isManuallyClosed.current) {
@@ -112,23 +140,37 @@ const usePlayerSocket = () => {
 
   // Connect to WebSocket
   const connect = useCallback(() => {
-    if (!isMounted.current) return;
+    console.log('[WebSocket] connect() called, isMounted:', isMounted.current);
+    if (!isMounted.current) {
+      console.log('[WebSocket] Component not mounted, aborting connect');
+      return;
+    }
 
+    console.log('[WebSocket] Starting connection attempt...');
     cleanup();
     setConnectionStatus('connecting');
     setError(null);
 
     try {
-      const socket = new WebSocket(getWebSocketUrl());
+      const wsUrl = getWebSocketUrl();
+      console.log('[WebSocket] Creating WebSocket with URL:', wsUrl);
+      const socket = new WebSocket(wsUrl);
       ws.current = socket;
+      console.log('[WebSocket] WebSocket object created:', socket);
+      console.log('[WebSocket] Setting up event handlers...');
 
       socket.onopen = () => {
+        console.log('[WebSocket] onopen event fired!', {
+          isMounted: isMounted.current,
+          readyState: socket.readyState
+        });
         if (!isMounted.current) {
+          console.log('[WebSocket] Component unmounted, closing socket');
           socket.close();
           return;
         }
         
-        console.log('[WebSocket] Connected');
+        console.log('[WebSocket] Setting connection status to connected');
         setConnectionStatus('connected');
         reconnectAttempts.current = 0;
       };
@@ -136,6 +178,28 @@ const usePlayerSocket = () => {
       socket.onmessage = handleMessage;
       socket.onerror = handleError;
       socket.onclose = handleClose;
+      
+      console.log('[WebSocket] Event handlers attached, waiting for connection...');
+      
+      // Add a timeout to detect hanging connections
+      const connectionTimeout = setTimeout(() => {
+        if (socket.readyState === WebSocket.CONNECTING) {
+          console.error('[WebSocket] Connection timeout - still in CONNECTING state after 10 seconds');
+          console.log('[WebSocket] Current socket state:', {
+            readyState: socket.readyState,
+            url: socket.url,
+            protocol: socket.protocol
+          });
+          socket.close();
+        }
+      }, 10000); // 10 second timeout
+      
+      // Clear timeout when connection opens
+      const originalOnOpen = socket.onopen;
+      socket.onopen = (...args) => {
+        clearTimeout(connectionTimeout);
+        originalOnOpen?.(...args);
+      };
     } catch (err) {
       console.error('[WebSocket] Connection error:', err);
       setError(err as Error);
@@ -159,17 +223,25 @@ const usePlayerSocket = () => {
 
   // Send command to WebSocket
   const sendCommand = useCallback((type: string, data?: any) => {
+    console.log('[WebSocket] Attempting to send command:', { type, data });
+    console.log('[WebSocket] Connection state:', ws.current?.readyState);
+    console.log('[WebSocket] WebSocket.OPEN constant:', WebSocket.OPEN);
+    
     if (ws.current?.readyState === WebSocket.OPEN) {
       try {
         const message: WebSocketMessage = { type, data };
-        ws.current.send(JSON.stringify(message));
+        const messageString = JSON.stringify(message);
+        console.log('[WebSocket] Sending message:', messageString);
+        
+        ws.current.send(messageString);
+        console.log('[WebSocket] Message sent successfully');
         return true;
       } catch (err) {
         console.error('[WebSocket] Error sending message:', err);
         return false;
       }
     }
-    console.warn('[WebSocket] Cannot send message - not connected');
+    console.warn('[WebSocket] Cannot send message - not connected. Ready state:', ws.current?.readyState);
     return false;
   }, []);
 
@@ -194,15 +266,17 @@ const usePlayerSocket = () => {
 
   // Connect on mount and clean up on unmount
   useEffect(() => {
+    console.log('[WebSocket] useEffect mounting - setting up connection');
     isMounted.current = true;
     isManuallyClosed.current = false;
     connect();
 
     return () => {
+      console.log('[WebSocket] useEffect cleanup - component unmounting');
       isMounted.current = false;
       cleanup();
     };
-  }, [connect, cleanup]);
+  }, []); // Empty dependency array to run only once
 
   // Return public API
   return useMemo(() => ({
