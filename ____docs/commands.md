@@ -8,12 +8,12 @@ lsof -i :8000
 lsof -i :3000
 
 # Kill processes on specific ports
-lsof -ti :8000 | xargs kill -9    # Backend port
-lsof -ti :3000 | xargs kill -9    # Frontend port
+lsof -ti :8000 | xargs kill -9
+lsof -ti :3000 | xargs kill -9
 
 # Kill by process name
-pkill -f "python.*main.py"        # Backend server
-pkill -f "npm.*dev"               # Frontend dev server
+pkill -f "python.*main.py"
+pkill -f "npm.*dev"
 
 
 
