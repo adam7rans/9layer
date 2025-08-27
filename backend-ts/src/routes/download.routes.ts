@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { DownloadService } from '../services/download.service';
 import { PrismaClient } from '@prisma/client';
 import { DownloadOptions } from '../types/api.types';
-import '../types/fastify';
+/// <reference path="../types/fastify.d.ts" />
 
 /**
  * Download routes for the 9layer backend

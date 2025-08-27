@@ -69,20 +69,6 @@ app.get('/health', async () => {
   };
 });
 
-// WebSocket connection handler (basic implementation)
-app.get('/ws', { websocket: true }, (connection, _req) => {
-  console.log('WebSocket connection established');
-
-  connection.on('message', (message: Buffer) => {
-    console.log('Received WebSocket message:', message.toString());
-    // WebSocket message handling will be implemented in Phase 2
-  });
-
-  connection.on('close', () => {
-    console.log('WebSocket connection closed');
-  });
-});
-
 // Graceful shutdown
 const signals = ['SIGINT', 'SIGTERM'];
 signals.forEach(signal => {

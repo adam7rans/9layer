@@ -1,8 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PlaybackService } from '../services/playback.service';
 import { PrismaClient } from '@prisma/client';
-import { Track, PlaybackState } from '../types/api.types';
-import '../types/fastify';
+import { Track } from '../types/api.types';
+/// <reference path="../types/fastify.d.ts" />
 
 /**
  * Playback routes for the 9layer backend
