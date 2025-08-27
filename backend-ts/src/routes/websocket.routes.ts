@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import WebSocketService from '../services/websocket.service';
 import { PlaybackService } from '../services/playback.service';
 import { PrismaClient } from '@prisma/client';
-import '../types/fastify';
+/// <reference path="../types/fastify.d.ts" />
 
 /**
  * WebSocket routes for the 9layer backend

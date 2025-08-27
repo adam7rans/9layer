@@ -19,6 +19,13 @@ backend/.venv/
 backend-ts/node_modules/
 node_modules/
 
+# TypeScript compiled output
+backend-ts/dist/
+*.js.map
+
+# Prisma
+backend-ts/prisma/migrations/*_migration_lock.toml
+
 # IDE specific files
 .vscode/
 .idea/
