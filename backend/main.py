@@ -1,6 +1,6 @@
 import logging
 import threading
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -18,10 +18,11 @@ def create_app():
     # Add CORS middleware
     app_instance.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Allows all origins
+        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
         allow_credentials=True,
-        allow_methods=["*"],  # Allows all methods
-        allow_headers=["*"],  # Allows all headers
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["*"],
+        expose_headers=["*"],
     )
 
     # Setup basic logging configuration for the application
@@ -37,7 +38,35 @@ def create_app():
     app_instance.include_router(playback_router.router, prefix="/api/player", tags=["playback control"]) # Or just /api and tag differentiate
     app_instance.include_router(websocket_router.router, prefix="/api/ws", tags=["websocket"])
     
-    # Mount static files for serving audio
+    # Add explicit WebSocket endpoint as backup
+    @app_instance.websocket("/api/ws")
+    async def websocket_endpoint_direct(websocket):
+        from app.routers.websocket_router import websocket_endpoint
+        await websocket_endpoint(websocket)
+    
+    # Add explicit CORS headers for all requests (including static files)
+    @app_instance.middleware("http")
+    async def add_cors_header(request, call_next):
+        # Handle preflight requests
+        if request.method == "OPTIONS":
+            response = Response()
+            response.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Max-Age"] = "86400"
+            return response
+        
+        response = await call_next(request)
+        
+        # Add CORS headers to all responses
+        response.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        response.headers["Access-Control-Expose-Headers"] = "*"
+        
+        return response
+
+    # Mount static files for serving audio (after CORS middleware)
     music_dir = Path("/Users/7racker/Documents/9layer/music")
     if music_dir.exists():
         app_instance.mount("/api/audio", StaticFiles(directory=str(music_dir)), name="audio")
