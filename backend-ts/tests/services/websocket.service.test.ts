@@ -1,9 +1,10 @@
 import WebSocketService from '../../src/services/websocket.service';
 import { TestDataFactory } from '../factory';
 import { jest } from '@jest/globals';
+import { WebSocketCommand, ExtendedWebSocket } from '../../src/types/websocket.types';
 
 // Mock WebSocket and WebSocketServer
-const mockWebSocket = {
+const mockSocket: ExtendedWebSocket = {
   send: jest.fn(),
   close: jest.fn(),
   terminate: jest.fn(),
@@ -15,22 +16,25 @@ const mockWebSocket = {
   lastHeartbeat: new Date(),
 };
 
+const mockWebSocket: ExtendedWebSocket = {
+  send: jest.fn(),
+  close: jest.fn(),
+  terminate: jest.fn(),
+  ping: jest.fn(),
+  on: jest.fn() as any,
+  readyState: 1,
+  clientId: 'test-client',
+  isAlive: true,
+  lastHeartbeat: new Date(),
+};
+
 const mockWebSocketServer = {
   on: jest.fn(),
   close: jest.fn(),
   clients: new Set([mockWebSocket]),
 };
 
-const mockIncomingMessage = {
-  headers: {
-    'user-agent': 'test-agent',
-  },
-};
 
-const mockConnection = {
-  socket: mockWebSocket,
-  on: jest.fn(),
-};
 
 // Mock the WebSocket module
 jest.mock('ws', () => ({
@@ -101,7 +105,7 @@ describe('WebSocketService', () => {
 
   describe('registerCommandHandler', () => {
     it('should register command handler', () => {
-      const mockHandler = jest.fn();
+      const mockHandler = jest.fn<(command: WebSocketCommand, clientId: string) => Promise<void> | void>();
 
       websocketService.registerCommandHandler('test', mockHandler);
 
@@ -122,7 +126,7 @@ describe('WebSocketService', () => {
     });
 
     it('should return false for non-existent client', () => {
-      const result = websocketService.sendToClient('non-existent', { type: 'test', payload: {} });
+      const result = websocketService.sendToClient('non-existent', { type: 'test', payload: {}, timestamp: new Date() });
 
       expect(result).toBe(false);
     });
@@ -137,7 +141,7 @@ describe('WebSocketService', () => {
 
       (websocketService as any).clients.set('closed-client', closedSocket);
 
-      const result = websocketService.sendToClient('closed-client', { type: 'test', payload: {} });
+      const result = websocketService.sendToClient('closed-client', { type: 'test', payload: {}, timestamp: new Date() });
 
       expect(result).toBe(false);
     });
@@ -234,7 +238,7 @@ describe('WebSocketService', () => {
   describe('Message Handling', () => {
     it('should handle command messages', () => {
       websocketService.initialize(mockServer);
-      const mockHandler = jest.fn();
+      const mockHandler = jest.fn<(command: WebSocketCommand, clientId: string) => Promise<void> | void>();
 
       websocketService.registerCommandHandler('testCommand', mockHandler);
 
@@ -276,7 +280,7 @@ describe('WebSocketService', () => {
 
     it('should handle command errors', () => {
       websocketService.initialize(mockServer);
-      const mockHandler = jest.fn().mockRejectedValue(new Error('Command failed'));
+      const mockHandler = jest.fn<(command: WebSocketCommand, clientId: string) => Promise<void> | void>().mockImplementation(() => Promise.reject(new Error('Command failed')));
 
       websocketService.registerCommandHandler('failingCommand', mockHandler);
 

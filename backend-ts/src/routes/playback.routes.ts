@@ -40,6 +40,8 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
                 properties: {
                   id: { type: 'string' },
                   title: { type: 'string' },
+                  artist: { type: 'string' },
+                  album: { type: 'string' },
                   artistId: { type: 'string' },
                   albumId: { type: 'string' },
                   duration: { type: 'number' },
@@ -64,10 +66,30 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
       const where: any = {};
 
       if (search) {
-        where.title = {
-          contains: search,
-          mode: 'insensitive'
-        };
+        where.OR = [
+          {
+            title: {
+              contains: search,
+              mode: 'insensitive'
+            }
+          },
+          {
+            artist: {
+              name: {
+                contains: search,
+                mode: 'insensitive'
+              }
+            }
+          },
+          {
+            album: {
+              title: {
+                contains: search,
+                mode: 'insensitive'
+              }
+            }
+          }
+        ];
       }
 
       if (artist) {
@@ -96,17 +118,23 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
             artist: true,
             album: true
           },
-          orderBy: { createdAt: 'desc' },
+          orderBy: [
+            { artist: { name: 'asc' } },
+            { album: { title: 'asc' } },
+            { title: 'asc' }
+          ],
           skip: offset,
           take: limit
         }),
         prisma.track.count({ where })
       ]);
 
-      // Convert to Track format
+      // Convert to Track format with artist and album names
       const formattedTracks: Track[] = tracks.map(track => ({
         id: track.id,
         title: track.title,
+        artist: track.artist?.name || 'Unknown Artist',
+        album: track.album?.title || 'Unknown Album',
         artistId: track.artistId,
         albumId: track.albumId,
         duration: track.duration,
