@@ -23,8 +23,16 @@ node_modules/
 backend-ts/dist/
 *.js.map
 
+# Environment files (sensitive)
+.env
+backend-ts/.env
+*.env.local
+*.env.development
+*.env.production
+
 # Prisma
-backend-ts/prisma/migrations/*_migration_lock.toml
+backend-ts/prisma/migrations/
+migration_lock.toml
 
 # IDE specific files
 .vscode/
