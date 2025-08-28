@@ -6,6 +6,19 @@ This file tracks development progress, features implemented, and issues resolved
 
 ```json
 {
+  "timestamp": "2025-08-28T23:41:50Z",
+  "description": "perf: reduce backend request log noise and prevent duplicate frontend polling",
+  "details": "Disabled Fastify per-request logging (disableRequestLogging) to eliminate high-volume info logs from /playback/state polling. Added a guard in IntegratedPlayer to ensure only one polling interval is created even under React StrictMode. This significantly reduces log spam while maintaining responsive playback state updates.",
+  "tags": ["backend", "frontend", "player", "performance", "bugfix"],
+  "files_modified": [
+    "backend-ts/src/app.ts",
+    "frontend/src/components/IntegratedPlayer.tsx"
+  ]
+}
+```
+
+```json
+{
   "timestamp": "2025-08-27T21:57:00Z",
   "description": "fix: resolve frontend integration issues - track loading, search, and playback controls",
   "details": "Fixed critical frontend integration problems preventing proper music library display and functionality. Resolved API response format mismatch where backend returned {success, tracks, total} but frontend expected nested data structure. Updated frontend API client to transform responses correctly. Fixed database query ordering from createdAt desc to alphabetical by artist/album/title, revealing all 1,300+ tracks from 77 artists instead of just recent Aphex Twin entries. Added 300ms search debounce and verified search works for existing artists (92 results for 'run' including RUN DMC). Fixed play button functionality by updating playTrack API to fetch playback state after starting tracks. All core functionality now working: track loading, search, and playback controls.",
