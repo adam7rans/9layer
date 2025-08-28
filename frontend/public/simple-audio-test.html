@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Audio Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1a1a; color: white; }
+        button { padding: 10px 20px; margin: 10px; background: #007acc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .log { background: #2a2a2a; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 12px; }
+        audio { width: 100%; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Simple Audio Test</h1>
+    
+    <audio id="testAudio" controls>
+        Your browser does not support the audio element.
+    </audio>
+    
+    <div>
+        <button onclick="testDirectLoad()">Test Direct Load</button>
+        <button onclick="testWithEvents()">Test with Events</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div id="log" class="log"></div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function testDirectLoad() {
+            const audio = document.getElementById('testAudio');
+            const url = 'http://localhost:8000/audio/Sz0FxOZk_L4';
+            
+            log(`🔄 Loading: ${url}`);
+            audio.src = url;
+            audio.load();
+            
+            setTimeout(() => {
+                log(`📊 Audio state: readyState=${audio.readyState}, networkState=${audio.networkState}`);
+                if (audio.error) {
+                    log(`❌ Audio error: code=${audio.error.code}, message="${audio.error.message}"`);
+                }
+            }, 2000);
+        }
+
+        function testWithEvents() {
+            const audio = document.getElementById('testAudio');
+            const url = 'http://localhost:8000/audio/Sz0FxOZk_L4';
+            
+            // Clear previous listeners
+            audio.removeEventListener('loadstart', handleEvent);
+            audio.removeEventListener('loadeddata', handleEvent);
+            audio.removeEventListener('canplay', handleEvent);
+            audio.removeEventListener('error', handleError);
+            
+            // Add event listeners
+            audio.addEventListener('loadstart', handleEvent);
+            audio.addEventListener('loadeddata', handleEvent);
+            audio.addEventListener('canplay', handleEvent);
+            audio.addEventListener('error', handleError);
+            
+            function handleEvent(e) {
+                log(`✅ Event: ${e.type}`);
+            }
+            
+            function handleError(e) {
+                log(`❌ Error event: ${e.type}`);
+                if (audio.error) {
+                    log(`   Error details: code=${audio.error.code}, message="${audio.error.message}"`);
+                }
+            }
+            
+            log(`🔄 Loading with events: ${url}`);
+            audio.src = url;
+            audio.load();
+        }
+
+        // Log initial state
+        window.onload = function() {
+            log('🚀 Page loaded, ready for testing');
+            log('💡 Open DevTools Network tab to monitor requests');
+        };
+    </script>
+</body>
+</html>
