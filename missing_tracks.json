@@ -1,0 +1,2036 @@
+{
+  "meta": {
+    "generatedAt": "2025-08-28T18:09:22.544Z",
+    "totalTracksScanned": 1300,
+    "totalMissing": 152,
+    "limitApplied": true,
+    "byArtist": [
+      {
+        "artist": "070 Shake",
+        "count": 7
+      },
+      {
+        "artist": "808 State",
+        "count": 18
+      },
+      {
+        "artist": "Academy of St Martin in the Fields, Sir Neville Marriner",
+        "count": 1
+      },
+      {
+        "artist": "Aphex Twin",
+        "count": 1
+      },
+      {
+        "artist": "Bochum Welt",
+        "count": 7
+      },
+      {
+        "artist": "Charli xcx",
+        "count": 2
+      },
+      {
+        "artist": "Deee-Lite",
+        "count": 2
+      },
+      {
+        "artist": "Helmet",
+        "count": 1
+      },
+      {
+        "artist": "J Dilla",
+        "count": 14
+      },
+      {
+        "artist": "J Dilla, Busta Rhymes, James Yancey, Trevor Smith",
+        "count": 6
+      },
+      {
+        "artist": "Jay Dee, J Dilla, James Yancey",
+        "count": 5
+      },
+      {
+        "artist": "Joey Beltram",
+        "count": 2
+      },
+      {
+        "artist": "Keith Mansfield",
+        "count": 1
+      },
+      {
+        "artist": "Kenny Larkin",
+        "count": 1
+      },
+      {
+        "artist": "Kevin Saunderson, Reese",
+        "count": 4
+      },
+      {
+        "artist": "Kid 606",
+        "count": 2
+      },
+      {
+        "artist": "Luke Vibert",
+        "count": 4
+      },
+      {
+        "artist": "Model 500",
+        "count": 2
+      },
+      {
+        "artist": "Nova Schola Gregoriana",
+        "count": 1
+      },
+      {
+        "artist": "Plastikman, Richie Hawtin",
+        "count": 1
+      },
+      {
+        "artist": "Quasimoto",
+        "count": 3
+      },
+      {
+        "artist": "Quasimoto, Madlib",
+        "count": 10
+      },
+      {
+        "artist": "RUN DMC",
+        "count": 9
+      },
+      {
+        "artist": "Space Dimension Controller",
+        "count": 3
+      },
+      {
+        "artist": "Space Dimension Controller, John Hamill",
+        "count": 9
+      },
+      {
+        "artist": "Space Dimension Controller, RR, RR",
+        "count": 2
+      },
+      {
+        "artist": "Urban Dance Squad",
+        "count": 19
+      },
+      {
+        "artist": "Wu-Tang Clan",
+        "count": 3
+      },
+      {
+        "artist": "Wu-Tang Clan, Junior Reid, Raekwon, GZA, Method Man, Masta Killa",
+        "count": 5
+      },
+      {
+        "artist": "Wu-Tang Clan, Poppa Wu, Uncle Pete",
+        "count": 7
+      }
+    ],
+    "byAlbum": [
+      {
+        "artist": "070 Shake",
+        "album": "Album - Petrichor",
+        "count": 7
+      },
+      {
+        "artist": "808 State",
+        "album": "Album - ex:el",
+        "count": 2
+      },
+      {
+        "artist": "808 State",
+        "album": "Album - Gorgeous",
+        "count": 6
+      },
+      {
+        "artist": "808 State",
+        "album": "Album - Ninety",
+        "count": 7
+      },
+      {
+        "artist": "808 State",
+        "album": "Album - Utd. State 90",
+        "count": 3
+      },
+      {
+        "artist": "Academy of St Martin in the Fields, Sir Neville Marriner",
+        "album": "Album - Amadeus",
+        "count": 1
+      },
+      {
+        "artist": "Aphex Twin",
+        "album": "Album - Come To Daddy",
+        "count": 1
+      },
+      {
+        "artist": "Bochum Welt",
+        "album": "Album - Desktop Robotics",
+        "count": 1
+      },
+      {
+        "artist": "Bochum Welt",
+        "album": "Album - Scharlach Eingang",
+        "count": 1
+      },
+      {
+        "artist": "Bochum Welt",
+        "album": "Album - Seafire",
+        "count": 5
+      },
+      {
+        "artist": "Charli xcx",
+        "album": "Album - BRAT",
+        "count": 1
+      },
+      {
+        "artist": "Charli xcx",
+        "album": "Album - CRASH",
+        "count": 1
+      },
+      {
+        "artist": "Deee-Lite",
+        "album": "Album - Dewdrops in the Garden",
+        "count": 1
+      },
+      {
+        "artist": "Deee-Lite",
+        "album": "Album - World Clique",
+        "count": 1
+      },
+      {
+        "artist": "Helmet",
+        "album": "Album - Meantime",
+        "count": 1
+      },
+      {
+        "artist": "J Dilla",
+        "album": "Album - Donuts",
+        "count": 5
+      },
+      {
+        "artist": "J Dilla",
+        "album": "Album - Ruff Draft",
+        "count": 9
+      },
+      {
+        "artist": "J Dilla, Busta Rhymes, James Yancey, Trevor Smith",
+        "album": "Album - The Shining",
+        "count": 6
+      },
+      {
+        "artist": "Jay Dee, J Dilla, James Yancey",
+        "album": "Album - Welcome 2 Detroit",
+        "count": 5
+      },
+      {
+        "artist": "Joey Beltram",
+        "album": "Album - Classics",
+        "count": 2
+      },
+      {
+        "artist": "Keith Mansfield",
+        "album": "Album - Kpm 1000 Series: Voices in Harmony",
+        "count": 1
+      },
+      {
+        "artist": "Kenny Larkin",
+        "album": "Album - Azimuth",
+        "count": 1
+      },
+      {
+        "artist": "Kevin Saunderson, Reese",
+        "album": "Album - Faces And Phases",
+        "count": 4
+      },
+      {
+        "artist": "Kid 606",
+        "album": "Album - Down With the Scene",
+        "count": 1
+      },
+      {
+        "artist": "Kid 606",
+        "album": "Album - Kid606 And Friends Vol. 1",
+        "count": 1
+      },
+      {
+        "artist": "Luke Vibert",
+        "album": "Album - Luke Vibert presents Modern Rave",
+        "count": 2
+      },
+      {
+        "artist": "Luke Vibert",
+        "album": "Album - Luke Vibert presents Rave Hop",
+        "count": 2
+      },
+      {
+        "artist": "Model 500",
+        "album": "Album - Deep Space",
+        "count": 2
+      },
+      {
+        "artist": "Nova Schola Gregoriana",
+        "album": "Album - Introduction To Early Music (An)",
+        "count": 1
+      },
+      {
+        "artist": "Plastikman, Richie Hawtin",
+        "album": "Album - Sheet One",
+        "count": 1
+      },
+      {
+        "artist": "Quasimoto",
+        "album": "Album - The Unseen",
+        "count": 3
+      },
+      {
+        "artist": "Quasimoto, Madlib",
+        "album": "Album - The Further Adventures of Lord Quas",
+        "count": 6
+      },
+      {
+        "artist": "Quasimoto, Madlib",
+        "album": "Album - Yessir Whatever",
+        "count": 4
+      },
+      {
+        "artist": "RUN DMC",
+        "album": "Album - Back From Hell",
+        "count": 1
+      },
+      {
+        "artist": "RUN DMC",
+        "album": "Album - King Of Rock",
+        "count": 1
+      },
+      {
+        "artist": "RUN DMC",
+        "album": "Album - Raising Hell",
+        "count": 4
+      },
+      {
+        "artist": "RUN DMC",
+        "album": "Album - RUN-DMC (Expanded Edition)",
+        "count": 2
+      },
+      {
+        "artist": "RUN DMC",
+        "album": "Album - Tougher Than Leather",
+        "count": 1
+      },
+      {
+        "artist": "Space Dimension Controller",
+        "album": "Album - Acid Sampler 1.5",
+        "count": 3
+      },
+      {
+        "artist": "Space Dimension Controller, John Hamill",
+        "album": "Album - Love Beyond the Intersect",
+        "count": 9
+      },
+      {
+        "artist": "Space Dimension Controller, RR, RR",
+        "album": "Album - Welcome to Mikrosector-50 EP (EP)",
+        "count": 2
+      },
+      {
+        "artist": "Urban Dance Squad",
+        "album": "Album - Mental Floss For The Globe / Hollywood Live 1990",
+        "count": 8
+      },
+      {
+        "artist": "Urban Dance Squad",
+        "album": "Album - Persona Non Grata (Chicago Live 1995)",
+        "count": 11
+      },
+      {
+        "artist": "Wu-Tang Clan",
+        "album": "Album - Enter The Wu-Tang (36 Chambers) [Expanded Edition]",
+        "count": 3
+      },
+      {
+        "artist": "Wu-Tang Clan, Junior Reid, Raekwon, GZA, Method Man, Masta Killa",
+        "album": "Album - The W",
+        "count": 5
+      },
+      {
+        "artist": "Wu-Tang Clan, Poppa Wu, Uncle Pete",
+        "album": "Album - Wu-Tang Forever",
+        "count": 7
+      }
+    ]
+  },
+  "items": [
+    {
+      "id": "UI3dTPv9aKU",
+      "youtubeId": "UI3dTPv9aKU",
+      "artist": "070 Shake",
+      "title": "Blood On Your Hands",
+      "album": "Album - Petrichor",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/070 Shake/Petrichor/Blood On Your Hands.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "Tq446wzy0PQ",
+      "youtubeId": "Tq446wzy0PQ",
+      "artist": "070 Shake",
+      "title": "Elephant",
+      "album": "Album - Petrichor",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/070 Shake/Petrichor/Elephant.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "vGeQjE8ZaZg",
+      "youtubeId": "vGeQjE8ZaZg",
+      "artist": "070 Shake",
+      "title": "Lungs",
+      "album": "Album - Petrichor",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/070 Shake/Petrichor/Lungs.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "dGVnUKRR-Js",
+      "youtubeId": "dGVnUKRR-Js",
+      "artist": "070 Shake",
+      "title": "Pieces Of You",
+      "album": "Album - Petrichor",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/070 Shake/Petrichor/Pieces Of You.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "GkcrCq82lcY",
+      "youtubeId": "GkcrCq82lcY",
+      "artist": "070 Shake",
+      "title": "Vagabond",
+      "album": "Album - Petrichor",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/070 Shake/Petrichor/Vagabond.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "FZfk1hMFBQA",
+      "youtubeId": "FZfk1hMFBQA",
+      "artist": "070 Shake",
+      "title": "What's Wrong With Me",
+      "album": "Album - Petrichor",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/070 Shake/Petrichor/What's Wrong With Me.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "UyuB-hzCYZA",
+      "youtubeId": "UyuB-hzCYZA",
+      "artist": "070 Shake",
+      "title": "Winter Baby / New Jersey Blues",
+      "album": "Album - Petrichor",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/070 Shake/Petrichor/Winter Baby ⧸ New Jersey Blues.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "7r1rO0yWfrA",
+      "youtubeId": "7r1rO0yWfrA",
+      "artist": "808 State",
+      "title": "808080808",
+      "album": "Album - Ninety",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Ninety/808080808.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "kno1gIUloY8",
+      "youtubeId": "kno1gIUloY8",
+      "artist": "808 State",
+      "title": "Ancodia",
+      "album": "Album - Ninety",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Ninety/Ancodia.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "3TKWwGjMfJw",
+      "youtubeId": "3TKWwGjMfJw",
+      "artist": "808 State",
+      "title": "Black Morpheus",
+      "album": "Album - Gorgeous",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Gorgeous/Black Morpheus.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "8HBeFKvGxhc",
+      "youtubeId": "8HBeFKvGxhc",
+      "artist": "808 State",
+      "title": "Cobra Bora",
+      "album": "Album - Ninety",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Ninety/Cobra Bora.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "9U9mUZbo_00",
+      "youtubeId": "9U9mUZbo_00",
+      "artist": "808 State",
+      "title": "Cübik",
+      "album": "Album - Utd. State 90",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Utd. State 90/Cübik.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "vjv7t7HVa-w",
+      "youtubeId": "vjv7t7HVa-w",
+      "artist": "808 State",
+      "title": "Donkey Doctor",
+      "album": "Album - Ninety",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Ninety/Donkey Doctor.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "cWqpuXcMOBY",
+      "youtubeId": "cWqpuXcMOBY",
+      "artist": "808 State",
+      "title": "Empire",
+      "album": "Album - ex:el",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/ex：el/Empire.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "-eRHeaqH4uw",
+      "youtubeId": "-eRHeaqH4uw",
+      "artist": "808 State",
+      "title": "Kinky National",
+      "album": "Album - Utd. State 90",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Utd. State 90/Kinky National.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "nbDGDgPVA9Q",
+      "youtubeId": "nbDGDgPVA9Q",
+      "artist": "808 State",
+      "title": "Magical Dream",
+      "album": "Album - Ninety",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Ninety/Magical Dream.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "cGQMiwszcAQ",
+      "youtubeId": "cGQMiwszcAQ",
+      "artist": "808 State",
+      "title": "Orbit",
+      "album": "Album - Gorgeous",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Gorgeous/Orbit.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "r_bflG_-Q3c",
+      "youtubeId": "r_bflG_-Q3c",
+      "artist": "808 State",
+      "title": "Pacific 202",
+      "album": "Album - Utd. State 90",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Utd. State 90/Pacific 202.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "cHqyAUhhmiU",
+      "youtubeId": "cHqyAUhhmiU",
+      "artist": "808 State",
+      "title": "Pacific 202",
+      "album": "Album - Ninety",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Ninety/Pacific 202.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "e3QpgJKY_PQ",
+      "youtubeId": "e3QpgJKY_PQ",
+      "artist": "808 State",
+      "title": "Sexy Dancer",
+      "album": "Album - Gorgeous",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Gorgeous/Sexy Dancer.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "fCoF2M52AvU",
+      "youtubeId": "fCoF2M52AvU",
+      "artist": "808 State",
+      "title": "Sexy Synthesizer",
+      "album": "Album - Gorgeous",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Gorgeous/Sexy Synthesizer.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "-YjH2OLqIi0",
+      "youtubeId": "-YjH2OLqIi0",
+      "artist": "808 State",
+      "title": "Southern Cross",
+      "album": "Album - Gorgeous",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Gorgeous/Southern Cross.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "Q1xLyE8K50E",
+      "youtubeId": "Q1xLyE8K50E",
+      "artist": "808 State",
+      "title": "Stormin Norman",
+      "album": "Album - Gorgeous",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Gorgeous/Stormin Norman.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "9QtoU_qZjmA",
+      "youtubeId": "9QtoU_qZjmA",
+      "artist": "808 State",
+      "title": "Sunrise",
+      "album": "Album - Ninety",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/Ninety/Sunrise.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "YJjll0wXfZc",
+      "youtubeId": "YJjll0wXfZc",
+      "artist": "808 State",
+      "title": "Techno Bell",
+      "album": "Album - ex:el",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/808 State/ex：el/Techno Bell.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "mS_FjYaWjpU",
+      "youtubeId": "mS_FjYaWjpU",
+      "artist": "Academy of St Martin in the Fields, Sir Neville Marriner",
+      "title": "Mozart: Le nozze di Figaro, K.492 - Original version, Vienna 1786 - Act 4: Le Nozze di Figaro,...",
+      "album": "Album - Amadeus",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Academy of St Martin in the Fields, Ambrosian Opera Chorus, Lucia Popp, Barbara Hendricks, José van Dam, Agnes Baltsa, Felicity Palmer, Aldo Baldin, Neil Jenkins, Robert Lloyd, Donald Maxwell, Cathryn Pope, Catherine Denley, John Constable, Ruggero Raimondi/Amadeus/Mozart： Le nozze di Figaro, K.492 - Original version, Vienna 1786 - Act 4： Le Nozze di Figaro,....webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "1cH83ctrCwI",
+      "youtubeId": "1cH83ctrCwI",
+      "artist": "Aphex Twin",
+      "title": "Bucephalus Bouncing Ball [Chosen by Warp co-founder Steve Beckett]",
+      "album": "Album - Come To Daddy",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Aphex Twin/Come To Daddy/Bucephalus Bouncing Ball [Chosen by Warp co-founder Steve Beckett].webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "FVvB2sS1eTA",
+      "youtubeId": "FVvB2sS1eTA",
+      "artist": "Bochum Welt",
+      "title": "At Dawn",
+      "album": "Album - Seafire",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Bochum Welt/Seafire/At Dawn.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "zmlkMKswGzo",
+      "youtubeId": "zmlkMKswGzo",
+      "artist": "Bochum Welt",
+      "title": "Color Me (Extended)",
+      "album": "Album - Seafire",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Bochum Welt/Seafire/Color Me (Extended).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "jWUSZ_Q08Nc",
+      "youtubeId": "jWUSZ_Q08Nc",
+      "artist": "Bochum Welt",
+      "title": "Color Me (Mix 2)",
+      "album": "Album - Seafire",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Bochum Welt/Seafire/Color Me (Mix 2).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "6mV3cTDCwPM",
+      "youtubeId": "6mV3cTDCwPM",
+      "artist": "Bochum Welt",
+      "title": "Desktop Robotics",
+      "album": "Album - Desktop Robotics",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Bochum Welt/Desktop Robotics/Desktop Robotics.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "K_21kVzMmRE",
+      "youtubeId": "K_21kVzMmRE",
+      "artist": "Bochum Welt",
+      "title": "Flughafen (Kinesthesia Mix)",
+      "album": "Album - Scharlach Eingang",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Bochum Welt, Cylob/Scharlach Eingang/Flughafen (Kinesthesia Mix).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "D-AEcQwQg0k",
+      "youtubeId": "D-AEcQwQg0k",
+      "artist": "Bochum Welt",
+      "title": "Mavic 1",
+      "album": "Album - Seafire",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Bochum Welt/Seafire/Mavic 1.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "cRLWwGRfIeI",
+      "youtubeId": "cRLWwGRfIeI",
+      "artist": "Bochum Welt",
+      "title": "N Hayworth Ave",
+      "album": "Album - Seafire",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Bochum Welt/Seafire/N Hayworth Ave.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "w_pDmpSSbQc",
+      "youtubeId": "w_pDmpSSbQc",
+      "artist": "Charli xcx",
+      "title": "365",
+      "album": "Album - BRAT",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Charli xcx/BRAT/365.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "oa7wY8TUXes",
+      "youtubeId": "oa7wY8TUXes",
+      "artist": "Charli xcx",
+      "title": "Baby",
+      "album": "Album - CRASH",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Charli xcx/CRASH/Baby.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "m9nSfCrwgIo",
+      "youtubeId": "m9nSfCrwgIo",
+      "artist": "Deee-Lite",
+      "title": "Build the Bridge",
+      "album": "Album - World Clique",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Deee-Lite/World Clique/Build the Bridge.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "6cQNRzA2p4M",
+      "youtubeId": "6cQNRzA2p4M",
+      "artist": "Deee-Lite",
+      "title": "Somebody",
+      "album": "Album - Dewdrops in the Garden",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Deee-Lite/Dewdrops in the Garden/Somebody.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "tC_Qt4_xJ6A",
+      "youtubeId": "tC_Qt4_xJ6A",
+      "artist": "Helmet",
+      "title": "FBLA II",
+      "album": "Album - Meantime",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Helmet/Meantime/FBLA II.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "Ig0ne2qbGP8",
+      "youtubeId": "Ig0ne2qbGP8",
+      "artist": "J Dilla",
+      "title": "Bye.",
+      "album": "Album - Donuts",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Donuts/Bye..webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "lKAi3rJEGVQ",
+      "youtubeId": "lKAi3rJEGVQ",
+      "artist": "J Dilla",
+      "title": "Crushin' (Yeeeeaah!) (Instrumental)",
+      "album": "Album - Ruff Draft",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Ruff Draft/Crushin' (Yeeeeaah!) (Instrumental).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "lO5U8oWNWxY",
+      "youtubeId": "lO5U8oWNWxY",
+      "artist": "J Dilla",
+      "title": "Glazed",
+      "album": "Album - Donuts",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Donuts/Glazed.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "gjyweFGhzqE",
+      "youtubeId": "gjyweFGhzqE",
+      "artist": "J Dilla",
+      "title": "Hi.",
+      "album": "Album - Donuts",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Donuts/Hi..webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "yo_7rqO70Ww",
+      "youtubeId": "yo_7rqO70Ww",
+      "artist": "J Dilla",
+      "title": "Intro",
+      "album": "Album - Ruff Draft",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Ruff Draft/Intro.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "w3Bzx0ybYzA",
+      "youtubeId": "w3Bzx0ybYzA",
+      "artist": "J Dilla",
+      "title": "Let's Take It Back",
+      "album": "Album - Ruff Draft",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Ruff Draft/Let's Take It Back.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "LyQMSmJ8qTc",
+      "youtubeId": "LyQMSmJ8qTc",
+      "artist": "J Dilla",
+      "title": "Let's Take It Back (Instrumental)",
+      "album": "Album - Ruff Draft",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Ruff Draft/Let's Take It Back (Instrumental).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "0UhW8w8lP84",
+      "youtubeId": "0UhW8w8lP84",
+      "artist": "J Dilla",
+      "title": "Make'em NV (Instrumental)",
+      "album": "Album - Ruff Draft",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Ruff Draft/Make'em NV (Instrumental).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "ClQ5gtvH92k",
+      "youtubeId": "ClQ5gtvH92k",
+      "artist": "J Dilla",
+      "title": "Nothing Like This (Instrumental)",
+      "album": "Album - Ruff Draft",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Ruff Draft/Nothing Like This (Instrumental).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "xWo4qH707OI",
+      "youtubeId": "xWo4qH707OI",
+      "artist": "J Dilla",
+      "title": "Shouts (Instrumental)",
+      "album": "Album - Ruff Draft",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Ruff Draft/Shouts (Instrumental).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "--1XDCtIDSc",
+      "youtubeId": "--1XDCtIDSc",
+      "artist": "J Dilla",
+      "title": "The $",
+      "album": "Album - Ruff Draft",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Ruff Draft/The $.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "J_na4TR1oK4",
+      "youtubeId": "J_na4TR1oK4",
+      "artist": "J Dilla",
+      "title": "Walkinonit",
+      "album": "Album - Donuts",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Donuts/Walkinonit.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "tV2XGgJ9LfM",
+      "youtubeId": "tV2XGgJ9LfM",
+      "artist": "J Dilla",
+      "title": "Welcome To The Show",
+      "album": "Album - Donuts",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Donuts/Welcome To The Show.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "l3R4MXQRdbU",
+      "youtubeId": "l3R4MXQRdbU",
+      "artist": "J Dilla",
+      "title": "Wild (Instrumental)",
+      "album": "Album - Ruff Draft",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla/Ruff Draft/Wild (Instrumental).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "eln0KC5CI18",
+      "youtubeId": "eln0KC5CI18",
+      "artist": "J Dilla, Busta Rhymes, James Yancey, Trevor Smith",
+      "title": "Baby",
+      "album": "Album - The Shining",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla, Guilty Simpson, Madlib, James Yancey, Byron Simpson, Otis Jackson Jr/The Shining/Baby.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "IUZZyTBvYEA",
+      "youtubeId": "IUZZyTBvYEA",
+      "artist": "J Dilla, Busta Rhymes, James Yancey, Trevor Smith",
+      "title": "Dime Piece",
+      "album": "Album - The Shining",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla, Dwele, James Yancey, Andwele Gardner/The Shining/Dime Piece.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "C3BgxOyOdUA",
+      "youtubeId": "C3BgxOyOdUA",
+      "artist": "J Dilla, Busta Rhymes, James Yancey, Trevor Smith",
+      "title": "Geek Down",
+      "album": "Album - The Shining",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla, Busta Rhymes, James Yancey, Trevor Smith/The Shining/Geek Down.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "W6ixWRAdfIk",
+      "youtubeId": "W6ixWRAdfIk",
+      "artist": "J Dilla, Busta Rhymes, James Yancey, Trevor Smith",
+      "title": "Jungle Love",
+      "album": "Album - The Shining",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla, MED, Guilty Simpson, James Yancey, Byron Simpson, Nick Rodriguez/The Shining/Jungle Love.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "cC-0nYSYIgk",
+      "youtubeId": "cC-0nYSYIgk",
+      "artist": "J Dilla, Busta Rhymes, James Yancey, Trevor Smith",
+      "title": "Love",
+      "album": "Album - The Shining",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla, Pharoahe Monch, James Yancey, Troy Donald Jamerson/The Shining/Love.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "qPxhUvB7z1Y",
+      "youtubeId": "qPxhUvB7z1Y",
+      "artist": "J Dilla, Busta Rhymes, James Yancey, Trevor Smith",
+      "title": "Won't Do",
+      "album": "Album - The Shining",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/J Dilla, James Yancey/The Shining/Won't Do.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "VJ8lhPNrMRE",
+      "youtubeId": "VJ8lhPNrMRE",
+      "artist": "Jay Dee, J Dilla, James Yancey",
+      "title": "B.B.E. (Big Booty Express)",
+      "album": "Album - Welcome 2 Detroit",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Jay Dee, J Dilla, James Yancey/Welcome 2 Detroit/B.B.E. (Big Booty Express).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "v1m2wgmpouk",
+      "youtubeId": "v1m2wgmpouk",
+      "artist": "Jay Dee, J Dilla, James Yancey",
+      "title": "It's Like That",
+      "album": "Album - Welcome 2 Detroit",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Jay Dee, J Dilla, James Yancey/Welcome 2 Detroit/It's Like That.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "LvFlrxZtaBs",
+      "youtubeId": "LvFlrxZtaBs",
+      "artist": "Jay Dee, J Dilla, James Yancey",
+      "title": "Pause",
+      "album": "Album - Welcome 2 Detroit",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Jay Dee, J Dilla, Frank 'n' Dank, James Yancey/Welcome 2 Detroit/Pause.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "vhZd_UXebP0",
+      "youtubeId": "vhZd_UXebP0",
+      "artist": "Jay Dee, J Dilla, James Yancey",
+      "title": "The Clapper",
+      "album": "Album - Welcome 2 Detroit",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Jay Dee, J Dilla, James Yancey/Welcome 2 Detroit/The Clapper.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "8xSyZ8Oxfd0",
+      "youtubeId": "8xSyZ8Oxfd0",
+      "artist": "Jay Dee, J Dilla, James Yancey",
+      "title": "Think Twice",
+      "album": "Album - Welcome 2 Detroit",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Jay Dee, J Dilla, L. Mizell, Mjabi, Sigidi/Welcome 2 Detroit/Think Twice.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "bebuUB-N1zo",
+      "youtubeId": "bebuUB-N1zo",
+      "artist": "Joey Beltram",
+      "title": "Energy Flash",
+      "album": "Album - Classics",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Joey Beltram/Classics/Energy Flash.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "c9Bq1P5VO2I",
+      "youtubeId": "c9Bq1P5VO2I",
+      "artist": "Joey Beltram",
+      "title": "The Trance",
+      "album": "Album - Classics",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Joey Beltram/Classics/The Trance.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "9dG4LcJsWO0",
+      "youtubeId": "9dG4LcJsWO0",
+      "artist": "Keith Mansfield",
+      "title": "Sundown",
+      "album": "Album - Kpm 1000 Series: Voices in Harmony",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Keith Mansfield/Kpm 1000 Series： Voices in Harmony/Sundown.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "I9f2AhRETW4",
+      "youtubeId": "I9f2AhRETW4",
+      "artist": "Kenny Larkin",
+      "title": "ESP",
+      "album": "Album - Azimuth",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Kenny Larkin/Azimuth/ESP.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "NeRM7cuxi_Q",
+      "youtubeId": "NeRM7cuxi_Q",
+      "artist": "Kevin Saunderson, Reese",
+      "title": "Bounce Your Body To The Box",
+      "album": "Album - Faces And Phases",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Kevin Saunderson, Reese & Santonio, Reese, Santonio/Faces And Phases/Bounce Your Body To The Box.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "Oc0SL1kZ7Kw",
+      "youtubeId": "Oc0SL1kZ7Kw",
+      "artist": "Kevin Saunderson, Reese",
+      "title": "Forcefield",
+      "album": "Album - Faces And Phases",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Kevin Saunderson, Santonio, Reese, Reese & Santonio/Faces And Phases/Forcefield.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "WqsJFmVvf1Y",
+      "youtubeId": "WqsJFmVvf1Y",
+      "artist": "Kevin Saunderson, Reese",
+      "title": "How To Play Our Music",
+      "album": "Album - Faces And Phases",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Kevin Saunderson, Santonio, Reese, Reese & Santonio/Faces And Phases/How To Play Our Music.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "-7lC9EkztSI",
+      "youtubeId": "-7lC9EkztSI",
+      "artist": "Kevin Saunderson, Reese",
+      "title": "Truth Of Self Evidence",
+      "album": "Album - Faces And Phases",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Kevin Saunderson, Reese & Santonio, Reese, Santonio/Faces And Phases/Truth Of Self Evidence.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "ZEZz_Q4znFE",
+      "youtubeId": "ZEZz_Q4znFE",
+      "artist": "Kid 606",
+      "title": "Catstep/My Kitten/Catnap",
+      "album": "Album - Kid606 And Friends Vol. 1",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Kid 606/Kid606 And Friends Vol. 1/Catstep⧸My Kitten⧸Catnap.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "hoeMAY2goug",
+      "youtubeId": "hoeMAY2goug",
+      "artist": "Kid 606",
+      "title": "Secrets 4 Sale",
+      "album": "Album - Down With the Scene",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Kid 606/Down With the Scene/Secrets 4 Sale.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "E31iL7LI1hw",
+      "youtubeId": "E31iL7LI1hw",
+      "artist": "Luke Vibert",
+      "title": "Acid",
+      "album": "Album - Luke Vibert presents Modern Rave",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Luke Vibert/Luke Vibert presents Modern Rave/Acid.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "Hc9BlpRdp2g",
+      "youtubeId": "Hc9BlpRdp2g",
+      "artist": "Luke Vibert",
+      "title": "Lover",
+      "album": "Album - Luke Vibert presents Rave Hop",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Luke Vibert/Luke Vibert presents Rave Hop/Lover.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "3BdkuC-z860",
+      "youtubeId": "3BdkuC-z860",
+      "artist": "Luke Vibert",
+      "title": "Music",
+      "album": "Album - Luke Vibert presents Rave Hop",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Luke Vibert/Luke Vibert presents Rave Hop/Music.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "Ru367X2PE40",
+      "youtubeId": "Ru367X2PE40",
+      "artist": "Luke Vibert",
+      "title": "The Music",
+      "album": "Album - Luke Vibert presents Modern Rave",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Luke Vibert/Luke Vibert presents Modern Rave/The Music.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "NEs6IE3J99Y",
+      "youtubeId": "NEs6IE3J99Y",
+      "artist": "Model 500",
+      "title": "I Wanna Be There (Edit)",
+      "album": "Album - Deep Space",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Model 500/Deep Space/I Wanna Be There (Edit).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "_EosOql3bHA",
+      "youtubeId": "_EosOql3bHA",
+      "artist": "Model 500",
+      "title": "Warning",
+      "album": "Album - Deep Space",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Model 500/Deep Space/Warning.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "PKoEYfMEyxE",
+      "youtubeId": "PKoEYfMEyxE",
+      "artist": "Nova Schola Gregoriana",
+      "title": "Gregorian Chant for Good Friday: Responsorium Graduale",
+      "album": "Album - Introduction To Early Music (An)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Nova Schola Gregoriana/Introduction To Early Music (An)/Gregorian Chant for Good Friday： Responsorium Graduale.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "XOlXVjXLbHE",
+      "youtubeId": "XOlXVjXLbHE",
+      "artist": "Plastikman, Richie Hawtin",
+      "title": "Ovokx (Remastered)",
+      "album": "Album - Sheet One",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Plastikman, Richie Hawtin/Sheet One/Ovokx (Remastered).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "fVKHD7bz78Y",
+      "youtubeId": "fVKHD7bz78Y",
+      "artist": "Quasimoto",
+      "title": "Bad Character",
+      "album": "Album - The Unseen",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto/The Unseen/Bad Character.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "JXeJA2i-Lck",
+      "youtubeId": "JXeJA2i-Lck",
+      "artist": "Quasimoto",
+      "title": "Basic Instinct",
+      "album": "Album - The Unseen",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto/The Unseen/Basic Instinct.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "_7UrsAtC7Nk",
+      "youtubeId": "_7UrsAtC7Nk",
+      "artist": "Quasimoto",
+      "title": "Phony Game",
+      "album": "Album - The Unseen",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto/The Unseen/Phony Game.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "FsIfpvHFvZU",
+      "youtubeId": "FsIfpvHFvZU",
+      "artist": "Quasimoto, Madlib",
+      "title": "Another Demo Tape",
+      "album": "Album - The Further Adventures of Lord Quas",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/The Further Adventures of Lord Quas/Another Demo Tape.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "kOlu3I7XPoU",
+      "youtubeId": "kOlu3I7XPoU",
+      "artist": "Quasimoto, Madlib",
+      "title": "Astronaut",
+      "album": "Album - Yessir Whatever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/Yessir Whatever/Astronaut.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "KDkjkQ3FA14",
+      "youtubeId": "KDkjkQ3FA14",
+      "artist": "Quasimoto, Madlib",
+      "title": "Green Power",
+      "album": "Album - Yessir Whatever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/Yessir Whatever/Green Power.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "ea-1IQNeKCQ",
+      "youtubeId": "ea-1IQNeKCQ",
+      "artist": "Quasimoto, Madlib",
+      "title": "J.A.N.",
+      "album": "Album - The Further Adventures of Lord Quas",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/The Further Adventures of Lord Quas/J.A.N..webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "qJhaaTMvgAM",
+      "youtubeId": "qJhaaTMvgAM",
+      "artist": "Quasimoto, Madlib",
+      "title": "LAX To JFK",
+      "album": "Album - Yessir Whatever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/Yessir Whatever/LAX To JFK.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "JhMXVAQUZSM",
+      "youtubeId": "JhMXVAQUZSM",
+      "artist": "Quasimoto, Madlib",
+      "title": "Rappcats Pt. 3",
+      "album": "Album - The Further Adventures of Lord Quas",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/The Further Adventures of Lord Quas/Rappcats Pt. 3.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "NUGIG26_mHM",
+      "youtubeId": "NUGIG26_mHM",
+      "artist": "Quasimoto, Madlib",
+      "title": "Raw Deal",
+      "album": "Album - The Further Adventures of Lord Quas",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/The Further Adventures of Lord Quas/Raw Deal.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "zc0_Ni3R8qY",
+      "youtubeId": "zc0_Ni3R8qY",
+      "artist": "Quasimoto, Madlib",
+      "title": "Seasons Change",
+      "album": "Album - Yessir Whatever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/Yessir Whatever/Seasons Change.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "T1Vs7uprtU0",
+      "youtubeId": "T1Vs7uprtU0",
+      "artist": "Quasimoto, Madlib",
+      "title": "Strange Piano",
+      "album": "Album - The Further Adventures of Lord Quas",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/The Further Adventures of Lord Quas/Strange Piano.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "J5KHJ2uWnNQ",
+      "youtubeId": "J5KHJ2uWnNQ",
+      "artist": "Quasimoto, Madlib",
+      "title": "Tomorrow Never Knows",
+      "album": "Album - The Further Adventures of Lord Quas",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Quasimoto, Madlib/The Further Adventures of Lord Quas/Tomorrow Never Knows.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "Zf-IqRG22cg",
+      "youtubeId": "Zf-IqRG22cg",
+      "artist": "RUN DMC",
+      "title": "Faces",
+      "album": "Album - Back From Hell",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/RUN DMC/Back From Hell/Faces.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "rCBwP3d83ok",
+      "youtubeId": "rCBwP3d83ok",
+      "artist": "RUN DMC",
+      "title": "Hit It Run",
+      "album": "Album - Raising Hell",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/RUN DMC/Raising Hell/Hit It Run.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "EVDTB1L9L3M",
+      "youtubeId": "EVDTB1L9L3M",
+      "artist": "RUN DMC",
+      "title": "King of Rock",
+      "album": "Album - King Of Rock",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/RUN DMC/King Of Rock/King of Rock.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "bJK13ksI4Ws",
+      "youtubeId": "bJK13ksI4Ws",
+      "artist": "RUN DMC",
+      "title": "My Adidas",
+      "album": "Album - Raising Hell",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/RUN DMC/Raising Hell/My Adidas.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "NMdSVAUHH3s",
+      "youtubeId": "NMdSVAUHH3s",
+      "artist": "RUN DMC",
+      "title": "Peter Piper",
+      "album": "Album - Raising Hell",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/RUN DMC/Raising Hell/Peter Piper.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "bsWpZw2GPOg",
+      "youtubeId": "bsWpZw2GPOg",
+      "artist": "RUN DMC",
+      "title": "Raising Hell",
+      "album": "Album - Raising Hell",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/RUN DMC/Raising Hell/Raising Hell.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "4Xpl5pt_YAw",
+      "youtubeId": "4Xpl5pt_YAw",
+      "artist": "RUN DMC",
+      "title": "Rock Box",
+      "album": "Album - RUN-DMC (Expanded Edition)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/RUN DMC/RUN-DMC (Expanded Edition)/Rock Box.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "AzJQP8zNLcg",
+      "youtubeId": "AzJQP8zNLcg",
+      "artist": "RUN DMC",
+      "title": "Tougher Than Leather",
+      "album": "Album - Tougher Than Leather",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/RUN DMC/Tougher Than Leather/Tougher Than Leather.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "FqqXO-jTsFY",
+      "youtubeId": "FqqXO-jTsFY",
+      "artist": "RUN DMC",
+      "title": "Wake Up",
+      "album": "Album - RUN-DMC (Expanded Edition)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/RUN DMC/RUN-DMC (Expanded Edition)/Wake Up.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "lVhlLUWE2cs",
+      "youtubeId": "lVhlLUWE2cs",
+      "artist": "Space Dimension Controller",
+      "title": "Echopet",
+      "album": "Album - Acid Sampler 1.5",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller/Acid Sampler 1.5/Echopet.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "KXLhHj7S4yU",
+      "youtubeId": "KXLhHj7S4yU",
+      "artist": "Space Dimension Controller",
+      "title": "Kosmische Conga",
+      "album": "Album - Acid Sampler 1.5",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller/Acid Sampler 1.5/Kosmische Conga.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "xlBgfzvRogU",
+      "youtubeId": "xlBgfzvRogU",
+      "artist": "Space Dimension Controller",
+      "title": "Minehead",
+      "album": "Album - Acid Sampler 1.5",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller/Acid Sampler 1.5/Minehead.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "8ZzyY3BGNj8",
+      "youtubeId": "8ZzyY3BGNj8",
+      "artist": "Space Dimension Controller, John Hamill",
+      "title": "Alone in an Unknown Sector",
+      "album": "Album - Love Beyond the Intersect",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, John Hamill, John Hamill/Love Beyond the Intersect/Alone in an Unknown Sector.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "D3LdblJ-K24",
+      "youtubeId": "D3LdblJ-K24",
+      "artist": "Space Dimension Controller, John Hamill",
+      "title": "Burnout (Dawn)",
+      "album": "Album - Love Beyond the Intersect",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, John Hamill/Love Beyond the Intersect/Burnout (Dawn).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "n-WpeuEMHxA",
+      "youtubeId": "n-WpeuEMHxA",
+      "artist": "Space Dimension Controller, John Hamill",
+      "title": "Early Steps",
+      "album": "Album - Love Beyond the Intersect",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, John Hamill/Love Beyond the Intersect/Early Steps.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "oHms5wp6cdA",
+      "youtubeId": "oHms5wp6cdA",
+      "artist": "Space Dimension Controller, John Hamill",
+      "title": "Gifted Sentience",
+      "album": "Album - Love Beyond the Intersect",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, John Hamill, John Hamill/Love Beyond the Intersect/Gifted Sentience.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "2a_3GtCc-Os",
+      "youtubeId": "2a_3GtCc-Os",
+      "artist": "Space Dimension Controller, John Hamill",
+      "title": "PVLN",
+      "album": "Album - Love Beyond the Intersect",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, John Hamill, John Hamill/Love Beyond the Intersect/PVLN.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "_FwpCFxSUSg",
+      "youtubeId": "_FwpCFxSUSg",
+      "artist": "Space Dimension Controller, John Hamill",
+      "title": "Slowtime in Reflection",
+      "album": "Album - Love Beyond the Intersect",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, John Hamill, John Hamill/Love Beyond the Intersect/Slowtime in Reflection.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "NdPCS1b6TkQ",
+      "youtubeId": "NdPCS1b6TkQ",
+      "artist": "Space Dimension Controller, John Hamill",
+      "title": "Sundown on Memory Point",
+      "album": "Album - Love Beyond the Intersect",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, John Hamill, John Hamill/Love Beyond the Intersect/Sundown on Memory Point.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "FojM6HfQ58Q",
+      "youtubeId": "FojM6HfQ58Q",
+      "artist": "Space Dimension Controller, John Hamill",
+      "title": "The Cost of Clarity",
+      "album": "Album - Love Beyond the Intersect",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, John Hamill, John Hamill/Love Beyond the Intersect/The Cost of Clarity.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "6gNIGHllNdw",
+      "youtubeId": "6gNIGHllNdw",
+      "artist": "Space Dimension Controller, John Hamill",
+      "title": "Voices Lost to Empty Space",
+      "album": "Album - Love Beyond the Intersect",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, John Hamill/Love Beyond the Intersect/Voices Lost to Empty Space.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "UIynBSC7I1w",
+      "youtubeId": "UIynBSC7I1w",
+      "artist": "Space Dimension Controller, RR, RR",
+      "title": "Music for Spaceports",
+      "album": "Album - Welcome to Mikrosector-50 EP (EP)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, RR, RR/Welcome to Mikrosector-50 EP (EP)/Music for Spaceports.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "MEeI1TU6bAE",
+      "youtubeId": "MEeI1TU6bAE",
+      "artist": "Space Dimension Controller, RR, RR",
+      "title": "While I Was Away",
+      "album": "Album - Welcome to Mikrosector-50 EP (EP)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Space Dimension Controller, RR, RR/Welcome to Mikrosector-50 EP (EP)/While I Was Away.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "i42N4HyFDnA",
+      "youtubeId": "i42N4HyFDnA",
+      "artist": "Urban Dance Squad",
+      "title": "Alienated (Live)",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/Alienated (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "4hFnWlyQCrA",
+      "youtubeId": "4hFnWlyQCrA",
+      "artist": "Urban Dance Squad",
+      "title": "Big Apple (Live)",
+      "album": "Album - Mental Floss For The Globe / Hollywood Live 1990",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Mental Floss For The Globe ⧸ Hollywood Live 1990/Big Apple (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "cH6fop6EPuU",
+      "youtubeId": "cH6fop6EPuU",
+      "artist": "Urban Dance Squad",
+      "title": "Brainstorm on the U.D.S. (Live)",
+      "album": "Album - Mental Floss For The Globe / Hollywood Live 1990",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Mental Floss For The Globe ⧸ Hollywood Live 1990/Brainstorm on the U.D.S. (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "uInMcayYIGk",
+      "youtubeId": "uInMcayYIGk",
+      "artist": "Urban Dance Squad",
+      "title": "Brainstorm on the U.D.S. (Live)",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/Brainstorm on the U.D.S. (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "-9VSeA0et2w",
+      "youtubeId": "-9VSeA0et2w",
+      "artist": "Urban Dance Squad",
+      "title": "Candy Strip Experience (Live)",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/Candy Strip Experience (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "wHuTQ-mD1ec",
+      "youtubeId": "wHuTQ-mD1ec",
+      "artist": "Urban Dance Squad",
+      "title": "Deeper Shade of Soul (Live)",
+      "album": "Album - Mental Floss For The Globe / Hollywood Live 1990",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Mental Floss For The Globe ⧸ Hollywood Live 1990/Deeper Shade of Soul (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "ztnmlvk6iqo",
+      "youtubeId": "ztnmlvk6iqo",
+      "artist": "Urban Dance Squad",
+      "title": "Demagogue (Live)",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/Demagogue (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "R6ivzcNDiek",
+      "youtubeId": "R6ivzcNDiek",
+      "artist": "Urban Dance Squad",
+      "title": "Downer (Live)",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/Downer (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "rFigtRMf9jw",
+      "youtubeId": "rFigtRMf9jw",
+      "artist": "Urban Dance Squad",
+      "title": "Fast Lane (Live)",
+      "album": "Album - Mental Floss For The Globe / Hollywood Live 1990",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Mental Floss For The Globe ⧸ Hollywood Live 1990/Fast Lane (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "XLJpbkRGLJs",
+      "youtubeId": "XLJpbkRGLJs",
+      "artist": "Urban Dance Squad",
+      "title": "God Blasts the Queen (Live)",
+      "album": "Album - Mental Floss For The Globe / Hollywood Live 1990",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Mental Floss For The Globe ⧸ Hollywood Live 1990/God Blasts the Queen (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "hAgQtt4sGJ8",
+      "youtubeId": "hAgQtt4sGJ8",
+      "artist": "Urban Dance Squad",
+      "title": "Good Grief",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/Good Grief.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "IXsEovwpxwY",
+      "youtubeId": "IXsEovwpxwY",
+      "artist": "Urban Dance Squad",
+      "title": "Mugshot (Live)",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/Mugshot (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "pNnhNSkL3wE",
+      "youtubeId": "pNnhNSkL3wE",
+      "artist": "Urban Dance Squad",
+      "title": "No Honestly (Live)",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/No Honestly (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "0gACDXZ_jTo",
+      "youtubeId": "0gACDXZ_jTo",
+      "artist": "Urban Dance Squad",
+      "title": "Prayer for My Demo (Live)",
+      "album": "Album - Mental Floss For The Globe / Hollywood Live 1990",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Mental Floss For The Globe ⧸ Hollywood Live 1990/Prayer for My Demo (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "DoN5BGNlLas",
+      "youtubeId": "DoN5BGNlLas",
+      "artist": "Urban Dance Squad",
+      "title": "Prayer for My Demo (Live)",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/Prayer for My Demo (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "tlDAymLChoY",
+      "youtubeId": "tlDAymLChoY",
+      "artist": "Urban Dance Squad",
+      "title": "Selfsufficient Snake (Live)",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/Selfsufficient Snake (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "RYc8RQ8WLK4",
+      "youtubeId": "RYc8RQ8WLK4",
+      "artist": "Urban Dance Squad",
+      "title": "Struggle for Jive (Live)",
+      "album": "Album - Mental Floss For The Globe / Hollywood Live 1990",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Mental Floss For The Globe ⧸ Hollywood Live 1990/Struggle for Jive (Live).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "PuqOpCzNsQQ",
+      "youtubeId": "PuqOpCzNsQQ",
+      "artist": "Urban Dance Squad",
+      "title": "The Devil",
+      "album": "Album - Mental Floss For The Globe / Hollywood Live 1990",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Mental Floss For The Globe ⧸ Hollywood Live 1990/The Devil.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "VACXSI5v8Yo",
+      "youtubeId": "VACXSI5v8Yo",
+      "artist": "Urban Dance Squad",
+      "title": "[Some] Chitchat",
+      "album": "Album - Persona Non Grata (Chicago Live 1995)",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Urban Dance Squad/Persona Non Grata/[Some] Chitchat.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "iEWnv4cQBKA",
+      "youtubeId": "iEWnv4cQBKA",
+      "artist": "Wu-Tang Clan",
+      "title": "Protect Ya Neck (Shao Lin Version)",
+      "album": "Album - Enter The Wu-Tang (36 Chambers) [Expanded Edition]",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan/Enter The Wu-Tang (36 Chambers) (Expanded Edition)/Protect Ya Neck (Shao Lin Version).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "G1GdDt5mrqo",
+      "youtubeId": "G1GdDt5mrqo",
+      "artist": "Wu-Tang Clan",
+      "title": "Wu-Tang Clan Ain't Nuthing ta F' Wit",
+      "album": "Album - Enter The Wu-Tang (36 Chambers) [Expanded Edition]",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan/Enter The Wu-Tang (36 Chambers) (Expanded Edition)/Wu-Tang Clan Ain't Nuthing ta F' Wit.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "bIhNhCzZRMw",
+      "youtubeId": "bIhNhCzZRMw",
+      "artist": "Wu-Tang Clan",
+      "title": "Wu-Tang: 7th Chamber - Part II (Conclusion)",
+      "album": "Album - Enter The Wu-Tang (36 Chambers) [Expanded Edition]",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan/Enter The Wu-Tang (36 Chambers) (Expanded Edition)/Wu-Tang： 7th Chamber - Part II (Conclusion).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "6r3CY7oakeY",
+      "youtubeId": "6r3CY7oakeY",
+      "artist": "Wu-Tang Clan, Junior Reid, Raekwon, GZA, Method Man, Masta Killa",
+      "title": "Do You Really (Thang Thang)",
+      "album": "Album - The W",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, DJ Kay Slay, Method Man, Streetlife, Masta Killa, Inspectah Deck/The W/Do You Really (Thang Thang).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "EstPl84qZ5c",
+      "youtubeId": "EstPl84qZ5c",
+      "artist": "Wu-Tang Clan, Junior Reid, Raekwon, GZA, Method Man, Masta Killa",
+      "title": "Hollow Bones",
+      "album": "Album - The W",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, Raekwon, Inspectah Deck, Ghostface Killah/The W/Hollow Bones.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "cEKJUwrWNGE",
+      "youtubeId": "cEKJUwrWNGE",
+      "artist": "Wu-Tang Clan, Junior Reid, Raekwon, GZA, Method Man, Masta Killa",
+      "title": "Protect Ya Neck (The Jump Off)",
+      "album": "Album - The W",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, Inspectah Deck, Raekwon, Method Man, Masta Killa, RZA, Ghostface Killah, U-God, Cappadonna, GZA/The W/Protect Ya Neck (The Jump Off).webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "8_h2-84F4RU",
+      "youtubeId": "8_h2-84F4RU",
+      "artist": "Wu-Tang Clan, Junior Reid, Raekwon, GZA, Method Man, Masta Killa",
+      "title": "Redbull",
+      "album": "Album - The W",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, Redman, Method Man, Inspectah Deck, Ghostface Killah, Raekwon/The W/Redbull.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "V94umFjXV6s",
+      "youtubeId": "V94umFjXV6s",
+      "artist": "Wu-Tang Clan, Junior Reid, Raekwon, GZA, Method Man, Masta Killa",
+      "title": "The Monument",
+      "album": "Album - The W",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, Raekwon, GZA, Busta Rhymes/The W/The Monument.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "WGmSwD5-cqQ",
+      "youtubeId": "WGmSwD5-cqQ",
+      "artist": "Wu-Tang Clan, Poppa Wu, Uncle Pete",
+      "title": "Heaterz",
+      "album": "Album - Wu-Tang Forever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, Raekwon, Inspectah Deck, Ol' Dirty Bastard, U-God, Cappadonna/Wu-Tang Forever/Heaterz.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "SGzYUY7E-Cs",
+      "youtubeId": "SGzYUY7E-Cs",
+      "artist": "Wu-Tang Clan, Poppa Wu, Uncle Pete",
+      "title": "Hellz Wind Staff",
+      "album": "Album - Wu-Tang Forever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, Streetlife, Ghostface Killah, Inspectah Deck, Method Man, RZA, Raekwon/Wu-Tang Forever/Hellz Wind Staff.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "wiSbQ5ru0uk",
+      "youtubeId": "wiSbQ5ru0uk",
+      "artist": "Wu-Tang Clan, Poppa Wu, Uncle Pete",
+      "title": "Impossible",
+      "album": "Album - Wu-Tang Forever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, RZA, U-God, Ghostface Killah, Tekitha/Wu-Tang Forever/Impossible.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "LAQgl7o79L4",
+      "youtubeId": "LAQgl7o79L4",
+      "artist": "Wu-Tang Clan, Poppa Wu, Uncle Pete",
+      "title": "Intro",
+      "album": "Album - Wu-Tang Forever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, RZA, GZA/Wu-Tang Forever/Intro.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "D39eZB4mXxE",
+      "youtubeId": "D39eZB4mXxE",
+      "artist": "Wu-Tang Clan, Poppa Wu, Uncle Pete",
+      "title": "Reunited",
+      "album": "Album - Wu-Tang Forever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, GZA, Ol' Dirty Bastard, RZA, Method Man/Wu-Tang Forever/Reunited.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "kXjMilJzpqw",
+      "youtubeId": "kXjMilJzpqw",
+      "artist": "Wu-Tang Clan, Poppa Wu, Uncle Pete",
+      "title": "Severe Punishment",
+      "album": "Album - Wu-Tang Forever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan, U-God, GZA, Raekwon, RZA, Masta Killa/Wu-Tang Forever/Severe Punishment.webm",
+      "exists": false,
+      "reason": "file_missing"
+    },
+    {
+      "id": "3d80hh6-IBE",
+      "youtubeId": "3d80hh6-IBE",
+      "artist": "Wu-Tang Clan, Poppa Wu, Uncle Pete",
+      "title": "The Projects",
+      "album": "Album - Wu-Tang Forever",
+      "albumYoutubeId": null,
+      "expectedPath": "/Volumes/2TB/coding tools/9layer/music/Wu-Tang Clan/Wu-Tang Forever/The Projects.webm",
+      "exists": false,
+      "reason": "file_missing"
+    }
+  ]
+}

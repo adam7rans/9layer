@@ -2,6 +2,8 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PlaybackService } from '../services/playback.service';
 import { PrismaClient } from '@prisma/client';
 import { Track } from '../types/api.types';
+import * as fs from 'fs';
+import * as path from 'path';
 /// <reference path="../types/fastify.d.ts" />
 
 /**
@@ -11,6 +13,31 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
   // Get the Prisma client and PlaybackService from the app
   const prisma = fastify.prisma as PrismaClient;
   const playbackService = new PlaybackService(prisma);
+
+  // Small helper to determine content-type by file extension
+  function contentTypeFor(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    switch (ext) {
+      case '.mp3':
+        return 'audio/mpeg';
+      case '.m4a':
+        // m4a is MPEG-4 audio
+        return 'audio/mp4';
+      case '.webm':
+        return 'audio/webm';
+      case '.ogg':
+        return 'audio/ogg';
+      case '.opus':
+        // standalone .opus is typically served as audio/ogg
+        return 'audio/ogg';
+      case '.wav':
+        return 'audio/wav';
+      case '.flac':
+        return 'audio/flac';
+      default:
+        return 'audio/mpeg';
+    }
+  }
 
   /**
    * Get all tracks
@@ -848,6 +875,112 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
       });
     } catch (error) {
       console.error('Set repeat error:', error);
+      return reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  });
+
+  /**
+   * Serve audio file for streaming
+   * GET /audio/:trackId
+   */
+  fastify.get('/audio/:trackId', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['trackId'],
+        properties: {
+          trackId: { type: 'string' }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { trackId } = request.params as { trackId: string };
+      
+      // Get track from database to get file path
+      const track = await prisma.track.findUnique({
+        where: { id: trackId }
+      });
+
+      if (!track) {
+        console.warn('[audio] 404: track not found', { trackId });
+        return reply.code(404).send({
+          success: false,
+          error: 'Track not found',
+          trackId
+        });
+      }
+
+      if (!track.filePath) {
+        console.warn('[audio] 404: track has empty filePath', { trackId });
+        return reply.code(404).send({
+          success: false,
+          error: 'Track has no file path',
+          trackId
+        });
+      }
+
+      const filePath = track.filePath;
+
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.warn('[audio] 404: file missing on disk', { trackId, filePath });
+        return reply.code(404).send({
+          success: false,
+          error: 'Audio file not found on disk',
+          trackId,
+          filePath
+        });
+      }
+
+      // Get file stats for content length
+      const stat = fs.statSync(filePath);
+      const fileSize = stat.size;
+
+      // Handle range requests for audio streaming
+      const range = request.headers.range;
+      
+      if (range) {
+        // Parse range header
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+
+        // Create read stream for the requested range
+        const file = fs.createReadStream(filePath, { start, end });
+
+        // Set appropriate headers for partial content
+        reply.code(206);
+        reply.header('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+        reply.header('Accept-Ranges', 'bytes');
+        reply.header('Content-Length', chunksize);
+        // Determine content type based on file extension
+        reply.header('Content-Type', contentTypeFor(filePath));
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Range');
+        
+        return reply.send(file);
+      } else {
+        // Serve entire file
+        const file = fs.createReadStream(filePath);
+        
+        reply.header('Content-Length', fileSize);
+        // Determine content type based on file extension
+        reply.header('Content-Type', contentTypeFor(filePath));
+        reply.header('Accept-Ranges', 'bytes');
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        reply.header('Access-Control-Allow-Headers', 'Range');
+        
+        return reply.send(file);
+      }
+    } catch (error) {
+      console.error('Audio serving error:', error);
       return reply.code(500).send({
         success: false,
         error: error instanceof Error ? error.message : 'Internal server error'

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>9layer Audio Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005999;
+        }
+        .log {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        audio {
+            width: 100%;
+            margin: 10px 0;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>9layer Audio Playback Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Configuration</h2>
+        <label>Backend URL:</label>
+        <input type="text" id="backendUrl" value="http://localhost:8000" />
+        <label>Test Track ID:</label>
+        <input type="text" id="trackId" value="5cswwkz8sAQ" />
+    </div>
+
+    <div class="test-section">
+        <h2>Test 1: Direct URL Access</h2>
+        <p>Test if the audio URL works directly in browser:</p>
+        <button onclick="testDirectUrl()">Open Audio URL in New Tab</button>
+        <div id="directUrlResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Fetch API Test</h2>
+        <p>Test if we can fetch the audio URL using JavaScript:</p>
+        <button onclick="testFetchApi()">Test Fetch API</button>
+        <div id="fetchResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Vanilla HTML Audio Element</h2>
+        <p>Test with a simple HTML audio element (no React):</p>
+        <audio id="testAudio" controls preload="none">
+            Your browser does not support the audio element.
+        </audio>
+        <br>
+        <button onclick="loadAudioSource()">Load Audio Source</button>
+        <button onclick="playAudio()">Play Audio</button>
+        <button onclick="pauseAudio()">Pause Audio</button>
+        <div id="audioResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 4: Audio Element with Event Listeners</h2>
+        <p>Test with comprehensive event logging:</p>
+        <audio id="testAudio2" controls preload="none">
+            Your browser does not support the audio element.
+        </audio>
+        <br>
+        <button onclick="setupAudioWithEvents()">Setup Audio with Events</button>
+        <button onclick="loadAndPlay()">Load and Play</button>
+        <div id="audioEventsResult" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 5: Network Analysis</h2>
+        <p>Check browser network requests (open DevTools Network tab):</p>
+        <button onclick="triggerNetworkTest()">Trigger Network Requests</button>
+        <div id="networkResult" class="log"></div>
+    </div>
+
+    <script>
+        function log(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.innerHTML += `[${timestamp}] ${message}\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function getAudioUrl() {
+            const backendUrl = document.getElementById('backendUrl').value;
+            const trackId = document.getElementById('trackId').value;
+            return `${backendUrl}/audio/${trackId}`;
+        }
+
+        function testDirectUrl() {
+            const url = getAudioUrl();
+            log('directUrlResult', `Opening URL: ${url}`);
+            window.open(url, '_blank');
+        }
+
+        async function testFetchApi() {
+            const url = getAudioUrl();
+            log('fetchResult', `Testing fetch to: ${url}`);
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'HEAD' // Use HEAD to avoid downloading the entire file
+                });
+                
+                log('fetchResult', `Response status: ${response.status}`);
+                log('fetchResult', `Response headers:`);
+                
+                for (const [key, value] of response.headers.entries()) {
+                    log('fetchResult', `  ${key}: ${value}`);
+                }
+                
+                if (response.ok) {
+                    log('fetchResult', '✅ Fetch successful - backend is reachable');
+                } else {
+                    log('fetchResult', '❌ Fetch failed - check backend status');
+                }
+            } catch (error) {
+                log('fetchResult', `❌ Fetch error: ${error.message}`);
+            }
+        }
+
+        function loadAudioSource() {
+            const audio = document.getElementById('testAudio');
+            const url = getAudioUrl();
+            
+            log('audioResult', `Loading audio source: ${url}`);
+            audio.src = url;
+            audio.load();
+            
+            audio.addEventListener('loadstart', () => log('audioResult', '📡 loadstart event'));
+            audio.addEventListener('loadeddata', () => log('audioResult', '✅ loadeddata event'));
+            audio.addEventListener('canplay', () => log('audioResult', '✅ canplay event'));
+            audio.addEventListener('canplaythrough', () => log('audioResult', '✅ canplaythrough event'));
+            audio.addEventListener('error', (e) => {
+                log('audioResult', `❌ error event: ${e.message || 'Unknown error'}`);
+                if (audio.error) {
+                    log('audioResult', `   Error code: ${audio.error.code}`);
+                    log('audioResult', `   Error message: ${audio.error.message}`);
+                }
+            });
+        }
+
+        function playAudio() {
+            const audio = document.getElementById('testAudio');
+            audio.play()
+                .then(() => log('audioResult', '▶️ Audio play started'))
+                .catch(error => log('audioResult', `❌ Play error: ${error.message}`));
+        }
+
+        function pauseAudio() {
+            const audio = document.getElementById('testAudio');
+            audio.pause();
+            log('audioResult', '⏸️ Audio paused');
+        }
+
+        function setupAudioWithEvents() {
+            const audio = document.getElementById('testAudio2');
+            
+            // Clear previous logs
+            document.getElementById('audioEventsResult').innerHTML = '';
+            
+            // Add all possible event listeners
+            const events = [
+                'loadstart', 'durationchange', 'loadedmetadata', 'loadeddata',
+                'progress', 'canplay', 'canplaythrough', 'play', 'pause',
+                'ended', 'error', 'abort', 'emptied', 'stalled', 'suspend',
+                'waiting', 'seeking', 'seeked', 'timeupdate', 'volumechange'
+            ];
+            
+            events.forEach(eventName => {
+                audio.addEventListener(eventName, (e) => {
+                    log('audioEventsResult', `🎵 ${eventName} event`);
+                    if (eventName === 'error' && audio.error) {
+                        log('audioEventsResult', `   Error details: code=${audio.error.code}, message="${audio.error.message}"`);
+                    }
+                });
+            });
+            
+            log('audioEventsResult', '✅ Event listeners attached');
+        }
+
+        function loadAndPlay() {
+            const audio = document.getElementById('testAudio2');
+            const url = getAudioUrl();
+            
+            log('audioEventsResult', `🔄 Loading and playing: ${url}`);
+            
+            audio.src = url;
+            audio.load();
+            
+            // Try to play after a short delay
+            setTimeout(() => {
+                audio.play()
+                    .then(() => log('audioEventsResult', '▶️ Play promise resolved'))
+                    .catch(error => log('audioEventsResult', `❌ Play promise rejected: ${error.message}`));
+            }, 1000);
+        }
+
+        async function triggerNetworkTest() {
+            log('networkResult', '🔍 Triggering various network requests...');
+            log('networkResult', '📋 Check DevTools Network tab for details');
+            
+            const url = getAudioUrl();
+            
+            // Test 1: HEAD request
+            try {
+                const headResponse = await fetch(url, { method: 'HEAD' });
+                log('networkResult', `HEAD request: ${headResponse.status}`);
+            } catch (error) {
+                log('networkResult', `HEAD request failed: ${error.message}`);
+            }
+            
+            // Test 2: GET request with range
+            try {
+                const rangeResponse = await fetch(url, {
+                    headers: { 'Range': 'bytes=0-1023' }
+                });
+                log('networkResult', `Range request: ${rangeResponse.status}`);
+            } catch (error) {
+                log('networkResult', `Range request failed: ${error.message}`);
+            }
+            
+            // Test 3: Audio element load
+            const testAudio = document.createElement('audio');
+            testAudio.src = url;
+            testAudio.load();
+            log('networkResult', 'Audio element load triggered');
+            
+            // Test 4: Image element (should fail but shows network behavior)
+            const testImg = document.createElement('img');
+            testImg.src = url;
+            log('networkResult', 'Image element load triggered (should fail)');
+        }
+    </script>
+</body>
+</html>

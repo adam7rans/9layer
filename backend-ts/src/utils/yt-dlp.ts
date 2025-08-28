@@ -11,7 +11,6 @@ export class YTDlpWrapper {
     audioQuality: '192K',
     output: '%(title)s.%(ext)s',
     noPlaylist: true,
-    yesPlaylist: false,
   };
 
   /**
@@ -28,9 +27,14 @@ export class YTDlpWrapper {
       // Ensure output directory exists
       await FileUtils.ensureDirectory(outputDir);
 
+      // Ensure temp directory on the target drive to avoid filling system tmp
+      const tempDir = path.join(env.DOWNLOAD_DIR, 'temp');
+      await FileUtils.ensureDirectory(tempDir);
+
       const ytdlpOptions: any = {
         ...YTDlpWrapper.DEFAULT_OPTIONS,
         output: path.join(outputDir, filenameTemplate),
+        paths: { temp: tempDir },
         ...(options.quality && { audioQuality: YTDlpWrapper.mapQualityToNumber(options.quality) }),
         ...(options.format === 'video' && { extractAudio: false }),
       };

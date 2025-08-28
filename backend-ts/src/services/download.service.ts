@@ -138,14 +138,18 @@ export class DownloadService extends EventEmitter {
       }
 
       // Create output directory structure
-      const outputDir = FileUtils.createMusicDirectoryStructure(
+      // If caller provided explicit outputDir/filenameTemplate, honor them.
+      // Otherwise, compute based on extracted metadata.
+      const computedOutputDir = FileUtils.createMusicDirectoryStructure(
         env.DOWNLOAD_DIR,
         videoInfo.artist,
-        videoInfo.album
+        videoInfo.album || 'Misc'
       );
+      const outputDir = job.options.outputDir || computedOutputDir;
 
-      // Generate filename
-      const filename = FileUtils.generateTrackFilename(videoInfo.title);
+      // Generate or use provided filename template
+      const computedFilename = FileUtils.generateTrackFilename(videoInfo.title);
+      const filename = job.options.filenameTemplate || computedFilename;
       const outputPath = path.join(outputDir, filename);
 
       // Update job options with computed values
@@ -224,18 +228,40 @@ export class DownloadService extends EventEmitter {
       });
     }
 
-    // Create track
-    const track = await this.prisma.track.create({
-      data: {
-        title: metadata.title,
-        artistId: artist.id,
-        albumId: album.id,
-        duration: metadata.duration,
-        filePath,
-        youtubeId: metadata.youtubeId,
-        fileSize: await FileUtils.getFileInfo(filePath)?.then(info => info?.size || 0) || 0,
-      },
-    });
+    // If track with this youtubeId exists, update filePath/fileSize instead of creating new
+    let track = null as any;
+    if (metadata.youtubeId) {
+      track = await this.prisma.track.findFirst({ where: { youtubeId: metadata.youtubeId } });
+    }
+
+    const fileSize = await (await FileUtils.getFileInfo(filePath))?.size || 0;
+
+    if (track) {
+      track = await this.prisma.track.update({
+        where: { id: track.id },
+        data: {
+          title: metadata.title,
+          artistId: artist.id,
+          albumId: album.id,
+          duration: metadata.duration,
+          filePath,
+          fileSize,
+          updatedAt: new Date(),
+        },
+      });
+    } else {
+      track = await this.prisma.track.create({
+        data: {
+          title: metadata.title,
+          artistId: artist.id,
+          albumId: album.id,
+          duration: metadata.duration,
+          filePath,
+          youtubeId: metadata.youtubeId,
+          fileSize,
+        },
+      });
+    }
 
     return track;
   }
