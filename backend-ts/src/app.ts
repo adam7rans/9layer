@@ -21,6 +21,9 @@ const app = Fastify({
   logger: {
     level: env.LOG_LEVEL,
   },
+  // Reduce log noise by disabling automatic per-request logging
+  // (still allows explicit logs and error logs at configured level)
+  disableRequestLogging: true,
 });
 
 // Initialize Prisma client
