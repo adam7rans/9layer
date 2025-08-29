@@ -6,8 +6,15 @@ export interface Track {
   artist: string;
   album?: string;
   duration?: number;
-  file_path: string;
+  filePath?: string;
+  file_path?: string; // Keep for backward compatibility
+  fileSize?: number;
+  youtubeId?: string;
   likeability?: number;
+  artistId?: string;
+  albumId?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface PlaybackState {

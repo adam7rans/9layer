@@ -18,6 +18,7 @@ export class PlaybackService extends EventEmitter {
   private repeat: 'none' | 'track' | 'queue' = 'none';
   private shuffle: boolean = false;
   private originalQueue: Track[] = []; // For shuffle restoration
+  private positionTimer: NodeJS.Timeout | null = null; // Timer for position updates
 
   constructor(prisma: PrismaClient) {
     super();
@@ -44,6 +45,9 @@ export class PlaybackService extends EventEmitter {
       isPlaying: this.isPlaying,
     });
 
+    // Start position tracking
+    this.startPositionTracking();
+
     // Broadcast state to all clients (will be handled by WebSocket service)
     this.broadcastState();
   }
@@ -55,6 +59,8 @@ export class PlaybackService extends EventEmitter {
     if (!this.currentTrack) return;
 
     this.isPlaying = false;
+    this.stopPositionTracking();
+    
     this.emitPlaybackEvent('paused', {
       track: this.currentTrack,
       position: this.position,
@@ -71,6 +77,8 @@ export class PlaybackService extends EventEmitter {
     if (!this.currentTrack) return;
 
     this.isPlaying = true;
+    this.startPositionTracking();
+    
     this.emitPlaybackEvent('started', {
       track: this.currentTrack,
       position: this.position,
@@ -87,6 +95,7 @@ export class PlaybackService extends EventEmitter {
     this.currentTrack = null;
     this.isPlaying = false;
     this.position = 0;
+    this.stopPositionTracking();
 
     this.emitPlaybackEvent('stopped', {});
     this.broadcastState();
@@ -425,6 +434,39 @@ export class PlaybackService extends EventEmitter {
   private broadcastState(): void {
     const state = this.getPlaybackState();
     this.emit('stateChanged', state);
+  }
+
+  /**
+   * Start position tracking timer
+   */
+  private startPositionTracking(): void {
+    this.stopPositionTracking(); // Clear any existing timer
+    
+    this.positionTimer = setInterval(() => {
+      if (this.isPlaying && this.currentTrack) {
+        // Increment by exactly 1 second
+        this.position += 1;
+        
+        // Check if track has ended
+        if (this.position >= this.currentTrack.duration) {
+          this.position = this.currentTrack.duration;
+          this.playNext();
+        } else {
+          // Broadcast position update every second
+          this.broadcastState();
+        }
+      }
+    }, 1000); // Update every second
+  }
+
+  /**
+   * Stop position tracking timer
+   */
+  private stopPositionTracking(): void {
+    if (this.positionTimer) {
+      clearInterval(this.positionTimer);
+      this.positionTimer = null;
+    }
   }
 }
 

@@ -74,12 +74,17 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           
           // Sync volume (convert from 0-100 to 0-1)
           audioRef.current.volume = newState.volume / 100;
+          
+          // Sync position - only if there's a significant difference (avoid constant seeking)
+          if (newState.currentTrack && Math.abs(audioRef.current.currentTime - newState.position) > 2) {
+            audioRef.current.currentTime = newState.position;
+          }
         }
       }
     } catch (error) {
       console.error('Failed to poll playback state:', error);
     }
-  }, [playbackState.currentTrack]);
+  }, [isAudioLoading]);
 
   // Load tracks from backend
   const loadTracks = useCallback(async () => {
@@ -111,7 +116,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     pollPlaybackState();
 
     // Start polling
-    pollIntervalRef.current = setInterval(pollPlaybackState, 2000);
+    pollIntervalRef.current = setInterval(pollPlaybackState, 1000);
 
     return () => {
       if (pollIntervalRef.current) {
@@ -148,7 +153,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           if (trackId) {
             // New track - update source and play
             setIsAudioLoading(true);
-            const url = `http://localhost:8000/audio/${trackId}`;
+            const url = `http://localhost:8000/playback/audio/${trackId}`;
             console.log('[Player] Attempting to load', url);
             // Preflight check to avoid NotSupportedError on non-audio responses
             try {
