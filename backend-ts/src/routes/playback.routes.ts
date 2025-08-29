@@ -645,9 +645,15 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
                   properties: {
                     id: { type: 'string' },
                     title: { type: 'string' },
+                    artist: { type: 'string' },
+                    album: { type: 'string' },
                     artistId: { type: 'string' },
                     albumId: { type: 'string' },
-                    duration: { type: 'number' }
+                    duration: { type: 'number' },
+                    filePath: { type: 'string' },
+                    fileSize: { type: 'number' },
+                    youtubeId: { type: 'string' },
+                    likeability: { type: 'number' }
                   }
                 },
                 isPlaying: { type: 'boolean' },
@@ -659,7 +665,9 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
                     type: 'object',
                     properties: {
                       id: { type: 'string' },
-                      title: { type: 'string' }
+                      title: { type: 'string' },
+                      artist: { type: 'string' },
+                      album: { type: 'string' }
                     }
                   }
                 },
@@ -675,23 +683,62 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
     try {
       const state = playbackService.getPlaybackState();
 
+      // If there's a current track, fetch full track info with artist/album names
+      let currentTrackWithNames = null;
+      if (state.currentTrack) {
+        const fullTrack = await prisma.track.findUnique({
+          where: { id: state.currentTrack.id },
+          include: {
+            artist: true,
+            album: true
+          }
+        });
+
+        if (fullTrack) {
+          currentTrackWithNames = {
+            id: fullTrack.id,
+            title: fullTrack.title,
+            artist: fullTrack.artist?.name || 'Unknown Artist',
+            album: fullTrack.album?.title || 'Unknown Album',
+            artistId: fullTrack.artistId,
+            albumId: fullTrack.albumId,
+            duration: fullTrack.duration,
+            filePath: fullTrack.filePath,
+            fileSize: fullTrack.fileSize,
+            youtubeId: fullTrack.youtubeId,
+            likeability: fullTrack.likeability
+          };
+        }
+      }
+
+      // Get queue with full track info
+      const queueWithNames = await Promise.all(
+        state.queue.map(async (track) => {
+          const fullTrack = await prisma.track.findUnique({
+            where: { id: track.id },
+            include: {
+              artist: true,
+              album: true
+            }
+          });
+
+          return {
+            id: track.id,
+            title: track.title,
+            artist: fullTrack?.artist?.name || 'Unknown Artist',
+            album: fullTrack?.album?.title || 'Unknown Album'
+          };
+        })
+      );
+
       return reply.send({
         success: true,
         state: {
-          currentTrack: state.currentTrack ? {
-            id: state.currentTrack.id,
-            title: state.currentTrack.title,
-            artistId: state.currentTrack.artistId,
-            albumId: state.currentTrack.albumId,
-            duration: state.currentTrack.duration
-          } : null,
+          currentTrack: currentTrackWithNames,
           isPlaying: state.isPlaying,
           position: state.position,
           volume: state.volume,
-          queue: state.queue.map(track => ({
-            id: track.id,
-            title: track.title
-          })),
+          queue: queueWithNames,
           repeat: state.repeat,
           shuffle: state.shuffle
         }
@@ -884,9 +931,9 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
 
   /**
    * Serve audio file for streaming
-   * GET /audio/:trackId
+   * GET /playback/audio/:trackId
    */
-  fastify.get('/audio/:trackId', {
+  fastify.get('/playback/audio/:trackId', {
     schema: {
       params: {
         type: 'object',
