@@ -1,4 +1,13 @@
-const API_BASE = 'http://localhost:8000';
+// Determine backend base URL dynamically so mobile clients on LAN work.
+// Order of precedence:
+// 1) NEXT_PUBLIC_API_BASE (explicit override)
+// 2) Window hostname + :8000 at runtime
+// 3) 127.0.0.1 for SSR/fallback
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE ??
+  (typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    : 'http://127.0.0.1:8000');
 
 export interface Track {
   id: string;

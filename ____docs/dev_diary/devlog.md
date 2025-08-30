@@ -6,6 +6,20 @@ This file tracks development progress, features implemented, and issues resolved
 
 ```json
 {
+  "timestamp": "2025-08-30T23:08:24+02:00",
+  "description": "feat/ui+fix: add 'Play on this device' button, enable LAN/mobile via dynamic API base and dev CORS",
+  "details": "Reintroduced and repositioned the local playback control as a clear button labeled 'Play on this device' under the track metadata. Switched frontend to a dynamic API base (NEXT_PUBLIC_API_BASE override, else window hostname:8000) so phones on LAN resolve to the backend. Expanded backend CORS to allow LAN origins in non-production while keeping production locked down. This fixes 'Failed to fetch random track' on mobile and surfaces the local playback control on all devices.",
+  "tags": ["frontend", "backend", "player", "ui", "cors", "mobile", "lan", "bugfix"],
+  "files_modified": [
+    "frontend/src/lib/api.ts",
+    "frontend/src/components/IntegratedPlayer.tsx",
+    "backend-ts/src/app.ts"
+  ]
+}
+```
+
+```json
+{
   "timestamp": "2025-08-30T18:18:09Z",
   "description": "fix(ui): standardize player controls to 50x50 and add plus/minus buttons under metadata",
   "details": "Updated IntegratedPlayer to render 50x50 Previous/Play/Next controls for consistent sizing and accessibility. Added large 50x50 plus/minus action buttons directly under the track title/artist section to adjust rating. Ensured existing Heroicons imports are used and handlers are wired to analytics rating functions.",

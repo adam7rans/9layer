@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { api, Track, PlaybackState } from '@/lib/api';
+import { api, Track, PlaybackState, API_BASE } from '@/lib/api';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   const [error, setError] = useState<string | null>(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [showAutoplayHelp, setShowAutoplayHelp] = useState(false);
+  const [localPlayback, setLocalPlayback] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
   const initRef = useRef(false);
   
@@ -168,34 +169,43 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
           // Sync HTML5 audio element with backend state
           if (audioRef.current && state.currentTrack) {
-            const audioUrl = `http://localhost:8000/playback/audio/${state.currentTrack.id}`;
+            const audioUrl = `${API_BASE}/playback/audio/${state.currentTrack.id}`;
             
-            // Update audio source if different
-            if (audioRef.current.src !== audioUrl) {
-              audioRef.current.src = audioUrl;
-              audioRef.current.load();
-            }
-            
-            // Sync playback state - only play if user has interacted
-            if (state.isPlaying && audioRef.current.paused) {
-              if (hasUserInteracted) {
-                audioRef.current.play().catch(error => {
-                  console.error('Audio play failed:', error);
-                  setShowAutoplayHelp(true);
-                });
-              } else {
-                setShowAutoplayHelp(true);
+            if (localPlayback) {
+              // Update audio source if different
+              if (audioRef.current.src !== audioUrl) {
+                audioRef.current.src = audioUrl;
+                audioRef.current.load();
               }
-            } else if (!state.isPlaying && !audioRef.current.paused) {
-              audioRef.current.pause();
-            }
             
-            // Sync volume
-            audioRef.current.volume = state.volume / 100;
+              // Sync playback state - only play if user has interacted
+              if (state.isPlaying && audioRef.current.paused) {
+                if (hasUserInteracted) {
+                  audioRef.current.play().catch(error => {
+                    console.error('Audio play failed:', error);
+                    setShowAutoplayHelp(true);
+                  });
+                } else {
+                  setShowAutoplayHelp(true);
+                }
+              } else if (!state.isPlaying && !audioRef.current.paused) {
+                audioRef.current.pause();
+              }
             
-            // Seek if needed (basic sync)
-            if (Math.abs((audioRef.current.currentTime || 0) - (state.position || 0)) > 2) {
-              audioRef.current.currentTime = state.position || 0;
+              // Sync volume
+              audioRef.current.volume = state.volume / 100;
+            
+              // Seek if needed (basic sync)
+              if (Math.abs((audioRef.current.currentTime || 0) - (state.position || 0)) > 2) {
+                audioRef.current.currentTime = state.position || 0;
+              }
+            } else {
+              // Remote control mode: ensure local audio is not playing
+              if (!audioRef.current.paused) audioRef.current.pause();
+              if (audioRef.current.src) {
+                audioRef.current.removeAttribute('src');
+                audioRef.current.load();
+              }
             }
           }
         }
@@ -209,7 +219,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     pollPlaybackState(); // Initial call
 
     return () => clearInterval(interval);
-  }, [hasUserInteracted]);
+  }, [hasUserInteracted, localPlayback]);
 
   // Auto-advance: when the audio element ends, play a new random track
   useEffect(() => {
@@ -461,6 +471,8 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
         </div>
         
+        
+
         {/* Centered Playback Controls */}
         <div className="flex justify-center p-3">
           <div className="flex items-center gap-3">
@@ -504,6 +516,18 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
             <div className="text-xs text-gray-400 truncate">
               {playbackState.currentTrack.artist}
               {playbackState.currentTrack.album && ` • ${playbackState.currentTrack.album.replace(/^Album - /, '')}`}
+            </div>
+            {/* Local playback toggle button under metadata */}
+            <div className="mt-2 flex items-center justify-center">
+              <Button
+                onClick={() => setLocalPlayback((v) => !v)}
+                size="sm"
+                variant={localPlayback ? 'default' : 'outline'}
+                aria-pressed={localPlayback}
+                title="Play audio locally on this device"
+              >
+                Play on this device {localPlayback ? 'ON' : 'OFF'}
+              </Button>
             </div>
             {/* Plus / Minus action buttons under metadata */}
             <div className="mt-2 flex items-center justify-center gap-2">

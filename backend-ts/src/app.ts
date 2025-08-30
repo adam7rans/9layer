@@ -37,7 +37,35 @@ app.decorate('prisma', prisma);
 async function registerPlugins() {
   // CORS
   await app.register(cors, {
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'http://localhost:3004'],
+    origin: (origin, cb) => {
+      // Allow non-browser requests
+      if (!origin) return cb(null, true);
+
+      // Explicit allowlist from env (comma-separated)
+      const envList = (env.CORS_ORIGINS || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      if (envList.length && envList.includes(origin)) return cb(null, true);
+
+      // Localhost ports for Next dev
+      const localhostAllow = [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:3002',
+        'http://localhost:3003',
+        'http://localhost:3004',
+      ];
+      if (localhostAllow.includes(origin)) return cb(null, true);
+
+      // In non-production, allow common LAN origins (192.168.x.x, 10.x.x.x, 172.16-31.x.x) on typical dev ports
+      if (env.NODE_ENV !== 'production') {
+        const lanRegex = /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)[\d.]+:(300\d|5173|8080)$/;
+        if (lanRegex.test(origin)) return cb(null, true);
+      }
+
+      cb(new Error(`CORS origin not allowed: ${origin}`), false);
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
