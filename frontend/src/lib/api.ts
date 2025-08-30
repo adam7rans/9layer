@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:8001';
 
 export interface Track {
   id: string;
@@ -237,6 +237,131 @@ export const api = {
       return await response.json();
     } catch (error) {
       return { success: false, error: 'Failed to get download status' };
+    }
+  },
+
+  // Analytics endpoints
+  analytics: {
+    // Start listening session
+    startSession: async (trackId: string, userId?: string): Promise<ApiResponse<any>> => {
+      try {
+        const response = await fetch(`${API_BASE}/analytics/session/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackId, userId })
+        });
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to start listening session' };
+      }
+    },
+
+    // Update listening session
+    updateSession: async (sessionId: string, data: {
+      endTime?: string;
+      totalTime?: number;
+      completed?: boolean;
+      skipped?: boolean;
+    }): Promise<ApiResponse<any>> => {
+      try {
+        const response = await fetch(`${API_BASE}/analytics/session/${sessionId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to update listening session' };
+      }
+    },
+
+    // Add playback segment
+    addSegment: async (data: {
+      trackId: string;
+      sessionId: string;
+      startPosition: number;
+      endPosition: number;
+      duration: number;
+    }): Promise<ApiResponse<any>> => {
+      try {
+        const response = await fetch(`${API_BASE}/analytics/segment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to add playback segment' };
+      }
+    },
+
+    // Increment track rating (plus button)
+    incrementRating: async (trackId: string, userId?: string): Promise<ApiResponse<any>> => {
+      try {
+        const response = await fetch(`${API_BASE}/analytics/rating/${trackId}/increment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to increment rating' };
+      }
+    },
+
+    // Decrement track rating (minus button)
+    decrementRating: async (trackId: string, userId?: string): Promise<ApiResponse<any>> => {
+      try {
+        const response = await fetch(`${API_BASE}/analytics/rating/${trackId}/decrement`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to decrement rating' };
+      }
+    },
+
+    // Get track analytics
+    getTrackAnalytics: async (trackId: string, userId?: string): Promise<ApiResponse<any>> => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (userId) queryParams.set('userId', userId);
+        
+        const response = await fetch(`${API_BASE}/analytics/track/${trackId}?${queryParams}`);
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to get track analytics' };
+      }
+    },
+
+    // Get top tracks
+    getTopTracks: async (userId?: string, limit?: number): Promise<ApiResponse<any>> => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (userId) queryParams.set('userId', userId);
+        if (limit) queryParams.set('limit', limit.toString());
+        
+        const response = await fetch(`${API_BASE}/analytics/top-tracks?${queryParams}`);
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to get top tracks' };
+      }
+    },
+
+    // Get listening history
+    getHistory: async (userId?: string, limit?: number): Promise<ApiResponse<any>> => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (userId) queryParams.set('userId', userId);
+        if (limit) queryParams.set('limit', limit.toString());
+        
+        const response = await fetch(`${API_BASE}/analytics/history?${queryParams}`);
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to get listening history' };
+      }
     }
   }
 };

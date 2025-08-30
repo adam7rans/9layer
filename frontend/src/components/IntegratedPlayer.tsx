@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, Track, PlaybackState } from '@/lib/api';
+import { useAnalytics } from '@/hooks/useAnalytics';
+import AnalyticsDashboard from './AnalyticsDashboard';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { 
@@ -12,7 +14,10 @@ import {
   SpeakerWaveIcon, 
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
-  ListBulletIcon
+  ListBulletIcon,
+  PlusIcon,
+  MinusIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/solid';
 import { cn } from '@/lib/utils';
 
@@ -29,21 +34,28 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   });
   const [tracks, setTracks] = useState<Track[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentView, setCurrentView] = useState<'library' | 'queue' | 'download'>('library');
+  const [currentView, setCurrentView] = useState<'library' | 'queue' | 'download' | 'analytics'>('library');
   const [downloadUrl, setDownloadUrl] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [showAutoplayHelp, setShowAutoplayHelp] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const initRef = useRef(false);
+  
+  // Analytics hook
+  const analytics = useAnalytics();
 
   // Fetch tracks on component mount
   useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
+    
     const fetchTracks = async () => {
       try {
         const response = await api.getTracks();
         if (response.success && response.data) {
           setTracks(response.data.tracks);
-        } else {
-          setError('Failed to load tracks');
         }
       } catch (error) {
         console.error('Failed to fetch tracks:', error);
@@ -54,8 +66,54 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     fetchTracks();
   }, []);
 
-  // Track if user has interacted with the page (required for autoplay)
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  // Set up user interaction listeners
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      setHasUserInteracted(true);
+      setShowAutoplayHelp(false);
+    };
+
+    const events = ['click', 'keydown', 'touchstart'];
+    events.forEach(event => {
+      document.addEventListener(event, handleUserInteraction, { once: true });
+    });
+
+    return () => {
+      events.forEach(event => {
+        document.removeEventListener(event, handleUserInteraction);
+      });
+    };
+  }, []);
+
+  
+
+  // Get current track index for navigation
+  const getCurrentTrackIndex = useCallback(() => {
+    if (!playbackState.currentTrack) return -1;
+    return tracks.findIndex(track => track.youtubeId === playbackState.currentTrack?.youtubeId);
+  }, [tracks, playbackState.currentTrack]);
+
+  // Skip to previous track
+  const handlePrevious = useCallback(async () => {
+    const currentIndex = getCurrentTrackIndex();
+    if (currentIndex <= 0) return; // No previous track
+    
+    const previousTrack = tracks[currentIndex - 1];
+    if (previousTrack) {
+      await handlePlay(previousTrack.youtubeId);
+    }
+  }, [getCurrentTrackIndex, tracks]);
+
+  // Skip to next track
+  const handleNext = useCallback(async () => {
+    const currentIndex = getCurrentTrackIndex();
+    if (currentIndex >= tracks.length - 1) return; // No next track
+    
+    const nextTrack = tracks[currentIndex + 1];
+    if (nextTrack) {
+      await handlePlay(nextTrack.youtubeId);
+    }
+  }, [getCurrentTrackIndex, tracks]);
 
   // Poll for playback state updates
   useEffect(() => {
@@ -65,44 +123,39 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         
         if (response.success && response.data) {
           const state = response.data;
-          
-          // Don't show any current track until user interacts
-          if (hasUserInteracted) {
-            setPlaybackState(state);
-          } else {
-            // Clean initial state - no current track shown
-            setPlaybackState({
-              isPlaying: false,
-              position: 0,
-              volume: state.volume || 80,
-              queue: state.queue || []
-            });
-          }
-          
-          // Only update audio element if user has interacted with the page
-          if (audioRef.current && state.currentTrack && hasUserInteracted) {
-            const audioUrl = `http://localhost:8000/playback/audio/${state.currentTrack.youtubeId}`;
+          setPlaybackState(state);
+
+          // Sync HTML5 audio element with backend state
+          if (audioRef.current && state.currentTrack) {
+            const audioUrl = `http://localhost:8001/playback/audio/${state.currentTrack.youtubeId}`;
             
-            // Only update src if different and if we're not currently playing
-            if (audioRef.current.src !== audioUrl && audioRef.current.paused) {
+            // Update audio source if different
+            if (audioRef.current.src !== audioUrl) {
               audioRef.current.src = audioUrl;
               audioRef.current.load();
             }
             
-            // Only sync playback if audio is loaded and ready
-            if (audioRef.current.readyState >= 2) { // HAVE_CURRENT_DATA or higher
-              if (state.isPlaying && audioRef.current.paused) {
+            // Sync playback state - only play if user has interacted
+            if (state.isPlaying && audioRef.current.paused) {
+              if (hasUserInteracted) {
                 audioRef.current.play().catch(error => {
                   console.error('Audio play failed:', error);
-                  setError('Audio playback failed: ' + error.message);
+                  setShowAutoplayHelp(true);
                 });
-              } else if (!state.isPlaying && !audioRef.current.paused) {
-                audioRef.current.pause();
+              } else {
+                setShowAutoplayHelp(true);
               }
+            } else if (!state.isPlaying && !audioRef.current.paused) {
+              audioRef.current.pause();
             }
             
-            // Sync volume (convert 0-100 to 0-1)
+            // Sync volume
             audioRef.current.volume = state.volume / 100;
+            
+            // Seek if needed (basic sync)
+            if (Math.abs((audioRef.current.currentTime || 0) - (state.position || 0)) > 2) {
+              audioRef.current.currentTime = state.position || 0;
+            }
           }
         }
       } catch (error) {
@@ -110,8 +163,8 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       }
     };
 
-    // Poll every 2 seconds
-    const interval = setInterval(pollPlaybackState, 2000);
+    // Poll every 1 second
+    const interval = setInterval(pollPlaybackState, 1000);
     pollPlaybackState(); // Initial call
 
     return () => clearInterval(interval);
@@ -120,9 +173,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   const handlePlay = useCallback(async (trackId?: string) => {
     try {
       setError(null);
-      // Mark that user has interacted with the page
       setHasUserInteracted(true);
-      
       
       if (!trackId) {
         console.error('No track ID provided');
@@ -133,38 +184,20 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       const response = await api.playTrack(trackId);
       
       if (response.success) {
+        const track = tracks.find(t => t.youtubeId === trackId);
+        
         // Update local state immediately for better UX
         setPlaybackState(prev => ({
           ...prev,
           isPlaying: true,
-          currentTrack: tracks.find(t => t.youtubeId === trackId) || prev.currentTrack
+          currentTrack: track || prev.currentTrack
         }));
         
-        // Try to play audio immediately since this is user-initiated
-        if (audioRef.current) {
-          const audioUrl = `http://localhost:8000/playback/audio/${trackId}`;
-          console.log('Attempting to load audio from:', audioUrl);
-          
-          if (audioRef.current.src !== audioUrl) {
-            audioRef.current.src = audioUrl;
-            audioRef.current.load();
-          }
-          
-          // Wait for audio to be ready before playing
-          const playAudio = () => {
-            if (audioRef.current && audioRef.current.readyState >= 2) {
-              audioRef.current.play().catch(error => {
-                console.error('Audio play failed:', error);
-                setError('Audio playback failed: ' + error.message);
-              });
-            } else {
-              // Try again in a bit if not ready
-              setTimeout(playAudio, 100);
-            }
-          };
-          
-          playAudio();
+        // Start analytics session for the new track
+        if (track?.id) {
+          await analytics.startListeningSession(track.id);
         }
+        
       } else {
         setError(response.error || 'Failed to play track');
       }
@@ -172,26 +205,25 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       console.error('Failed to play track:', error);
       setError('Failed to play track');
     }
-  }, [tracks]);
+  }, [tracks, analytics]);
 
   const handlePause = useCallback(async () => {
     try {
       setError(null);
-      // Mark that user has interacted with the page
       setHasUserInteracted(true);
       
       await api.pausePlayback();
       setPlaybackState(prev => ({ ...prev, isPlaying: false }));
       
-      // Pause the audio element
-      if (audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause();
-      }
+      // Track pause event for analytics
+      analytics.handlePause();
+      
     } catch (error) {
       console.error('Failed to pause track:', error);
       setError('Failed to pause track');
     }
-  }, []);
+  }, [analytics]);
+
 
   const handleVolumeChange = useCallback(async (value: number[]) => {
     const volume = Math.round(value[0] * 100);
@@ -214,10 +246,6 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     // Update local state immediately for responsiveness
     setPlaybackState(prev => ({ ...prev, position: newPosition }));
     
-    // Seek the audio element directly
-    if (audioRef.current && audioRef.current.readyState >= 2) {
-      audioRef.current.currentTime = newPosition;
-    }
     
     // Also call backend seek API
     try {
@@ -229,6 +257,71 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     console.log('Seeking to:', newPosition);
   }, [playbackState.currentTrack]);
 
+  // Add audio event listeners for analytics tracking
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      analytics.handleTimeUpdate(audio.currentTime);
+    };
+
+    const handlePlay = () => {
+      analytics.handlePlay();
+    };
+
+    const handlePause = () => {
+      analytics.handlePause();
+    };
+
+    const handleEnded = () => {
+      analytics.handleTrackEnd();
+      // Auto-advance to next track
+      handleNext();
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [analytics, handleNext]);
+
+  // Rating functions
+  const handleIncrementRating = useCallback(async (trackId: string) => {
+    try {
+      await analytics.incrementRating(trackId);
+    } catch (error) {
+      console.error('Failed to increment rating:', error);
+    }
+  }, [analytics]);
+
+  const handleDecrementRating = useCallback(async (trackId: string) => {
+    try {
+      await analytics.decrementRating(trackId);
+    } catch (error) {
+      console.error('Failed to decrement rating:', error);
+    }
+  }, [analytics]);
+
+  // Filter tracks based on search query
+  const filteredTracks = tracks.filter(track => 
+    track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    track.artist.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Format time helper function
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const handleDownload = useCallback(async () => {
     if (!downloadUrl.trim()) return;
@@ -252,40 +345,23 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     }
   }, [downloadUrl]);
 
-  const filteredTracks = tracks.filter(track =>
-    track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    track.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (track.album && track.album.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
     <div className={cn("h-screen flex flex-col bg-gray-900 text-white", className)}>
-      {/* Hidden Audio Element - Only show error if user has interacted */}
+      {/* Hidden Audio Element */}
       <audio 
         ref={audioRef}
         preload="none"
+        playsInline
         onError={(e) => {
-          if (hasUserInteracted) {
-            console.error('Audio error:', e);
-            setError('Failed to load audio file');
-          }
+          console.error('Audio element error:', e);
+          setError('Audio playback error');
         }}
-        onLoadStart={() => {}}
-        onCanPlay={() => {}}
-        onLoadedData={() => {}}
-        onAbort={() => {}}
+        className="hidden"
       />
       
-      {/* Header */}
-      <div className="border-b border-gray-700 bg-gray-800">
-        {/* Progress Bar Row */}
-        <div className="flex items-center justify-between p-3 gap-4">
+      {/* Main Player */}
+      <div className="bg-gray-900">
+        <div className="flex items-center justify-between p-3 gap-3">
           {/* Audio Timeline Progress Bar */}
           <div className="flex-1 px-4 bg-red-500/10 min-h-[20px] flex items-center">
             <div className="flex items-center gap-3 w-full">
@@ -329,24 +405,14 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
             </div>
           </div>
 
-          {/* Volume Control */}
-          <div className="flex items-center gap-1">
-            <SpeakerWaveIcon className="w-3 h-3" />
-            <Slider
-              value={[playbackState.volume / 100]}
-              onValueChange={handleVolumeChange}
-              max={1}
-              step={0.1}
-              className="w-16"
-            />
-          </div>
         </div>
         
-        {/* Controls, Track Info and Navigation Row */}
-        <div className="flex items-center justify-between p-3 gap-4">
-          {/* Playback Controls */}
+        {/* Centered Playback Controls */}
+        <div className="flex justify-center p-3">
           <div className="flex items-center gap-1">
             <Button 
+              onClick={handlePrevious}
+              disabled={getCurrentTrackIndex() <= 0}
               variant="ghost" 
               className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
               style={{ height: '28px', width: '28px' }}
@@ -366,6 +432,8 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               )}
             </Button>
             <Button 
+              onClick={handleNext}
+              disabled={getCurrentTrackIndex() >= tracks.length - 1}
               variant="ghost" 
               className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
               style={{ height: '28px', width: '28px' }}
@@ -373,43 +441,18 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               <ForwardIcon className="w-4 h-4" />
             </Button>
           </div>
-
-          {/* Track Info */}
-          {playbackState.currentTrack && (
-            <div className="min-w-0 flex-shrink flex-1 text-center">
-              <div className="font-medium text-sm truncate">{playbackState.currentTrack.title}</div>
-              <div className="text-xs text-gray-400 truncate">{playbackState.currentTrack.artist}</div>
-            </div>
-          )}
-          
-          {/* Navigation */}
-          <div className="flex gap-1 flex-shrink-0">
-            <Button
-              variant={currentView === 'library' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setCurrentView('library')}
-              className="h-8 w-8 p-0"
-            >
-              <MagnifyingGlassIcon className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={currentView === 'queue' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setCurrentView('queue')}
-              className="h-8 w-8 p-0"
-            >
-              <ListBulletIcon className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={currentView === 'download' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setCurrentView('download')}
-              className="h-8 w-8 p-0"
-            >
-              <ArrowDownTrayIcon className="w-4 h-4" />
-            </Button>
-          </div>
         </div>
+
+        {/* Track Info Row */}
+        {playbackState.currentTrack && (
+          <div className="text-center pb-3">
+            <div className="font-medium text-sm truncate">{playbackState.currentTrack.title}</div>
+            <div className="text-xs text-gray-400 truncate">
+              {playbackState.currentTrack.artist}
+              {playbackState.currentTrack.album && ` • ${playbackState.currentTrack.album.replace(/^Album - /, '')}`}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Error Display */}
@@ -419,41 +462,113 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         </div>
       )}
 
+      {/* Autoplay Help Banner */}
+      {showAutoplayHelp && (
+        <div className="bg-amber-500/20 border border-amber-500 text-amber-200 p-3 text-sm flex items-center justify-between">
+          <div className="pr-3">
+            <div className="font-medium">Audio playback requires user interaction.</div>
+            <div className="opacity-80">
+              Click any button or the play button to start audio playback.
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setShowAutoplayHelp(false);
+                setHasUserInteracted(true);
+                if (playbackState.currentTrack?.youtubeId) {
+                  handlePlay(playbackState.currentTrack.youtubeId);
+                }
+              }}
+            >
+              Enable Audio
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         {currentView === 'library' && (
           <div className="h-full flex flex-col">
-            {/* Search */}
+            {/* Search Bar */}
             <div className="p-4 border-b border-gray-700">
-              <input
-                type="text"
-                placeholder="Search tracks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-              />
+              <div className="relative">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search tracks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                />
+              </div>
             </div>
             
             {/* Track List */}
             <div className="flex-1 overflow-y-auto">
-              {filteredTracks.map((track) => (
-                <div
-                  key={track.youtubeId}
-                  className="flex items-center justify-between p-3 hover:bg-gray-800 border-b border-gray-800"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{track.title}</div>
-                    <div className="text-sm text-gray-400 truncate">{track.artist} • {track.album}</div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handlePlay(track.youtubeId)}
-                    className="ml-2 flex-shrink-0"
-                  >
-                    <PlayIcon className="w-4 h-4" />
-                  </Button>
+              {filteredTracks.length === 0 ? (
+                <div className="p-4 text-center text-gray-400">
+                  {searchQuery ? 'No tracks found' : 'No tracks available'}
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-1 p-2">
+                  {filteredTracks.map((track) => (
+                    <div key={track.youtubeId} className="flex items-center gap-2 p-2 bg-gray-800 rounded hover:bg-gray-700 transition-colors">
+                      {/* Play Button */}
+                      <Button
+                        onClick={() => handlePlay(track.youtubeId)}
+                        className="h-8 w-8 p-0 flex-shrink-0"
+                        variant={playbackState.currentTrack?.youtubeId === track.youtubeId && playbackState.isPlaying ? "default" : "ghost"}
+                      >
+                        {playbackState.currentTrack?.youtubeId === track.youtubeId && playbackState.isPlaying ? (
+                          <PauseIcon className="w-4 h-4" />
+                        ) : (
+                          <PlayIcon className="w-4 h-4" />
+                        )}
+                      </Button>
+                      
+                      {/* Track Info */}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate text-sm">{track.title}</div>
+                        <div className="text-xs text-gray-400 truncate">{track.artist}</div>
+                      </div>
+                      
+                      {/* Rating Display */}
+                      <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <span>{analytics.getTrackRating(track.id || '')}</span>
+                      </div>
+                      
+                      {/* Rating Buttons */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          onClick={() => track.id && handleDecrementRating(track.id)}
+                          className="h-6 w-6 p-0"
+                          variant="ghost"
+                          size="sm"
+                        >
+                          <MinusIcon className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          onClick={() => track.id && handleIncrementRating(track.id)}
+                          className="h-6 w-6 p-0"
+                          variant="ghost"
+                          size="sm"
+                        >
+                          <PlusIcon className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      
+                      {/* Duration */}
+                      <div className="text-xs text-gray-400 font-mono flex-shrink-0 w-12 text-right">
+                        {track.duration ? formatTime(track.duration) : '--:--'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -498,6 +613,53 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
             </div>
           </div>
         )}
+
+        {currentView === 'analytics' && (
+          <AnalyticsDashboard
+            onPlayTrack={handlePlay}
+            onIncrementRating={handleIncrementRating}
+            onDecrementRating={handleDecrementRating}
+            getTrackRating={analytics.getTrackRating}
+            playbackState={playbackState}
+            tracks={tracks}
+          />
+        )}
+      </div>
+
+      {/* Bottom Navigation */}
+      <div className="flex border-t border-gray-700 bg-gray-900">
+        <Button
+          onClick={() => setCurrentView('library')}
+          variant={currentView === 'library' ? 'default' : 'ghost'}
+          className="flex-1 rounded-none h-12 flex items-center justify-center gap-2 text-sm"
+        >
+          <MagnifyingGlassIcon className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">Library</span>
+        </Button>
+        <Button
+          onClick={() => setCurrentView('queue')}
+          variant={currentView === 'queue' ? 'default' : 'ghost'}
+          className="flex-1 rounded-none h-12 flex items-center justify-center gap-2 text-sm"
+        >
+          <ListBulletIcon className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">Queue</span>
+        </Button>
+        <Button
+          onClick={() => setCurrentView('analytics')}
+          variant={currentView === 'analytics' ? 'default' : 'ghost'}
+          className="flex-1 rounded-none h-12 flex items-center justify-center gap-2 text-sm"
+        >
+          <ChartBarIcon className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">Analytics</span>
+        </Button>
+        <Button
+          onClick={() => setCurrentView('download')}
+          variant={currentView === 'download' ? 'default' : 'ghost'}
+          className="flex-1 rounded-none h-12 flex items-center justify-center gap-2 text-sm"
+        >
+          <ArrowDownTrayIcon className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">Download</span>
+        </Button>
       </div>
     </div>
   );

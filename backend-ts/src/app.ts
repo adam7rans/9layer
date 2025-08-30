@@ -7,6 +7,7 @@ import { env } from './config/environment';
 import { downloadRoutes } from './routes/download.routes';
 import { playbackRoutes } from './routes/playback.routes';
 import { websocketRoutes } from './routes/websocket.routes';
+import { analyticsRoutes } from './routes/analytics.routes';
 import path from 'path';
 
 // Extend Fastify types to include Prisma
@@ -36,9 +37,10 @@ app.decorate('prisma', prisma);
 async function registerPlugins() {
   // CORS
   await app.register(cors, {
-    origin: env.CORS_ORIGINS.split(','),
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'http://localhost:3004'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   });
 
   // WebSocket support
@@ -58,6 +60,9 @@ async function registerRoutes() {
 
   // Register playback routes
   await app.register(playbackRoutes);
+
+  // Register analytics routes
+  await app.register(analyticsRoutes);
 
   // Register WebSocket routes
   await app.register(websocketRoutes);
