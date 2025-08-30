@@ -19,7 +19,9 @@ import {
   Volume2, 
   Search,
   Wifi,
-  WifiOff
+  WifiOff,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -207,13 +209,18 @@ const Player = () => {
         console.log('[PLAYER-STATE] Previous state:', prev);
         
         // Don't override audioUrl if it's already set and WebSocket sends null
-        const newState = { ...prev, ...update };
-        
-        // Handle both snake_case and camelCase from WebSocket
-        if (update.audio_url === null && prev.audioUrl) {
-          console.log('[PLAYER-STATE] Preventing WebSocket from overriding audioUrl:', prev.audioUrl);
-          newState.audioUrl = prev.audioUrl;
-          delete newState.audio_url; // Remove the snake_case version
+        const newState: any = { ...prev, ...update };
+
+        // Handle both snake_case and camelCase from WebSocket safely
+        const updAny = update as any;
+        if (Object.prototype.hasOwnProperty.call(updAny, 'audio_url')) {
+          if (updAny.audio_url === null && prev.audioUrl) {
+            console.log('[PLAYER-STATE] Preventing WebSocket from overriding audioUrl:', prev.audioUrl);
+            newState.audioUrl = prev.audioUrl;
+          } else if (typeof updAny.audio_url === 'string') {
+            newState.audioUrl = updAny.audio_url as string;
+          }
+          delete newState.audio_url;
         }
         
         // Don't let WebSocket override isPlaying if we have a track loaded and playing
@@ -483,9 +490,9 @@ const Player = () => {
           clearTimeout(timeoutId);
           console.log('[AUTO-PLAY] 📨 API response received!');
           console.log('[AUTO-PLAY] 📄 Response status:', response.status);
-        } catch (fetchError) {
+        } catch (fetchError: unknown) {
           clearTimeout(timeoutId);
-          if (fetchError.name === 'AbortError') {
+          if (fetchError instanceof DOMException && fetchError.name === 'AbortError') {
             console.error('[AUTO-PLAY] ⏰ API request timed out after 5 seconds');
             return;
           } else {
@@ -721,6 +728,37 @@ const Player = () => {
                       {playerState.currentTrack.album}
                     </p>
                   )}
+
+                  {/* Plus / Minus action buttons under metadata */}
+                  <div className="mt-4 flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-[50px] w-[50px]"
+                      disabled={!isConnected || !playerState.currentTrack}
+                      onClick={() => {
+                        console.log('[UI] Plus button clicked for track:', playerState.currentTrack);
+                      }}
+                      aria-label="Add"
+                      title={!isConnected ? 'Reconnecting...' : 'Add'}
+                    >
+                      <Plus className="h-5 w-5" />
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-[50px] w-[50px]"
+                      disabled={!isConnected || !playerState.currentTrack}
+                      onClick={() => {
+                        console.log('[UI] Minus button clicked for track:', playerState.currentTrack);
+                      }}
+                      aria-label="Remove"
+                      title={!isConnected ? 'Reconnecting...' : 'Remove'}
+                    >
+                      <Minus className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Volume Control */}
@@ -739,7 +777,7 @@ const Player = () => {
 
               {/* Waveform Timeline - Full Width */}
               <WaveformTimeline 
-                audioUrl={playerState.audioUrl}
+                audioUrl={playerState.audioUrl ?? undefined}
                 currentTime={playerState.currentTime}
                 duration={playerState.duration}
                 onSeek={handleSeek}
@@ -755,19 +793,19 @@ const Player = () => {
                   variant="outline"
                   disabled={!isConnected}
                   aria-label="Toggle shuffle"
+                  className="h-[50px] w-[50px]"
                 >
                   <Shuffle className="h-4 w-4" />
                 </Toggle>
 
                 <Button
                   variant="outline"
-                  size="icon"
                   onClick={() => {
                     console.log('[UI] Previous button clicked');
                     previous();
                   }}
                   className={cn(
-                    "h-12 w-12 cursor-pointer hover:bg-gray-100 transition-colors",
+                    "h-[50px] w-[50px] cursor-pointer hover:bg-white/10 transition-colors",
                     !isConnected && "opacity-70"
                   )}
                   title={!isConnected ? "Reconnecting..." : "Previous track"}
@@ -776,7 +814,6 @@ const Player = () => {
                 </Button>
 
                 <Button
-                  size="icon"
                   onClick={() => {
                     console.log('[UI] Play/Pause button clicked');
                     if (playerState.isPlaying) {
@@ -786,7 +823,7 @@ const Player = () => {
                     }
                   }}
                   className={cn(
-                    "h-16 w-16 rounded-full cursor-pointer transition-all duration-200",
+                    "h-[50px] w-[50px] rounded-full cursor-pointer transition-all duration-200",
                     "hover:scale-105 hover:shadow-lg",
                     !isConnected && "opacity-70"
                   )}
@@ -801,13 +838,12 @@ const Player = () => {
 
                 <Button
                   variant="outline"
-                  size="icon"
                   onClick={() => {
                     console.log('[UI] Next button clicked');
                     next();
                   }}
                   className={cn(
-                    "h-12 w-12 cursor-pointer hover:bg-gray-100 transition-colors",
+                    "h-[50px] w-[50px] cursor-pointer hover:bg-white/10 transition-colors",
                     !isConnected && "opacity-70"
                   )}
                   title={!isConnected ? "Reconnecting..." : "Next track"}
@@ -883,6 +919,37 @@ const Player = () => {
                 {playerState.currentTrack.album}
               </p>
             )}
+
+            {/* Plus / Minus action buttons under metadata (mobile) */}
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-[50px] w-[50px]"
+                disabled={!isConnected || !playerState.currentTrack}
+                onClick={() => {
+                  console.log('[UI-MOBILE] Plus button clicked for track:', playerState.currentTrack);
+                }}
+                aria-label="Add"
+                title={!isConnected ? 'Reconnecting...' : 'Add'}
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-[50px] w-[50px]"
+                disabled={!isConnected || !playerState.currentTrack}
+                onClick={() => {
+                  console.log('[UI-MOBILE] Minus button clicked for track:', playerState.currentTrack);
+                }}
+                aria-label="Remove"
+                title={!isConnected ? 'Reconnecting...' : 'Remove'}
+              >
+                <Minus className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
 
           {/* User Interaction Prompt - smart prompt for session-based interaction */}
@@ -909,7 +976,7 @@ const Player = () => {
           {/* Waveform Timeline - Full Width */}
           <div className="px-4">
             <WaveformTimeline 
-              audioUrl={playerState.audioUrl}
+              audioUrl={playerState.audioUrl ?? undefined}
               currentTime={playerState.currentTime}
               duration={playerState.duration}
               onSeek={handleSeek}
@@ -930,7 +997,7 @@ const Player = () => {
                   previous();
                 }}
                 className={cn(
-                  "h-14 w-14 cursor-pointer hover:bg-gray-100 transition-colors",
+                  "h-14 w-14 cursor-pointer hover:bg-white/10 transition-colors",
                   !isConnected && "opacity-70"
                 )}
                 title={!isConnected ? "Reconnecting..." : "Previous track"}
@@ -970,7 +1037,7 @@ const Player = () => {
                   next();
                 }}
                 className={cn(
-                  "h-14 w-14 cursor-pointer hover:bg-gray-100 transition-colors",
+                  "h-14 w-14 cursor-pointer hover:bg-white/10 transition-colors",
                   !isConnected && "opacity-70"
                 )}
                 title={!isConnected ? "Reconnecting..." : "Next track"}
