@@ -5,15 +5,15 @@ import { api, Track, PlaybackState } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
-  Volume2, 
-  Search,
-  Download,
-  List
-} from 'lucide-react';
+  PlayIcon, 
+  PauseIcon, 
+  BackwardIcon, 
+  ForwardIcon, 
+  SpeakerWaveIcon, 
+  MagnifyingGlassIcon,
+  ArrowDownTrayIcon,
+  ListBulletIcon
+} from '@heroicons/react/24/solid';
 import { cn } from '@/lib/utils';
 
 interface IntegratedPlayerProps {
@@ -29,259 +29,234 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   });
   const [tracks, setTracks] = useState<Track[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<'library' | 'queue' | 'download'>('library');
   const [downloadUrl, setDownloadUrl] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
-  
-  // Polling interval for playback state (workaround for WebSocket issue)
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const pollStartedRef = useRef(false);
-  
-  // Audio element ref for actual audio playback
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  
-  // Track loading state to prevent conflicts
-  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Poll playback state every 2 seconds
-  const pollPlaybackState = useCallback(async () => {
-    try {
-      const response = await api.getPlaybackState();
-      if (response.success && response.data) {
-        const newState = response.data;
-        setPlaybackState(newState);
+  // Fetch tracks on component mount
+  useEffect(() => {
+    const fetchTracks = async () => {
+      try {
+        const response = await api.getTracks();
+        if (response.success && response.data) {
+          setTracks(response.data.tracks);
+        } else {
+          setError('Failed to load tracks');
+        }
+      } catch (error) {
+        console.error('Failed to fetch tracks:', error);
+        setError('Failed to load tracks');
+      }
+    };
+
+    fetchTracks();
+  }, []);
+
+  // Track if user has interacted with the page (required for autoplay)
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+
+  // Poll for playback state updates
+  useEffect(() => {
+    const pollPlaybackState = async () => {
+      try {
+        const response = await api.getPlaybackState();
         
-        // Sync audio element with backend state (but don't interfere with user-initiated loading)
-        if (audioRef.current && !isAudioLoading) {
-          // Sync play/pause state (only if user has interacted)
-          if (newState.isPlaying && audioRef.current.paused && audioRef.current.src) {
-            audioRef.current.play().catch((error) => {
-              if (error.name === 'NotAllowedError') {
-                setError('Click play button to start audio (browser policy)');
-              } else if (error.name === 'AbortError') {
-                // Ignore abort errors from rapid loading
-                console.log('Audio play aborted, likely due to new track loading');
-              } else {
-                console.error('Audio play error:', error);
-                setError('Failed to play audio');
-              }
+        if (response.success && response.data) {
+          const state = response.data;
+          
+          // Don't show any current track until user interacts
+          if (hasUserInteracted) {
+            setPlaybackState(state);
+          } else {
+            // Clean initial state - no current track shown
+            setPlaybackState({
+              isPlaying: false,
+              position: 0,
+              volume: state.volume || 80,
+              queue: state.queue || []
             });
-          } else if (!newState.isPlaying && !audioRef.current.paused) {
-            audioRef.current.pause();
           }
           
-          // Sync volume (convert from 0-100 to 0-1)
-          audioRef.current.volume = newState.volume / 100;
-          
-          // Sync position - only if there's a significant difference (avoid constant seeking)
-          if (newState.currentTrack && Math.abs(audioRef.current.currentTime - newState.position) > 2) {
-            audioRef.current.currentTime = newState.position;
+          // Only update audio element if user has interacted with the page
+          if (audioRef.current && state.currentTrack && hasUserInteracted) {
+            const audioUrl = `http://localhost:8000/playback/audio/${state.currentTrack.youtubeId}`;
+            
+            // Only update src if different and if we're not currently playing
+            if (audioRef.current.src !== audioUrl && audioRef.current.paused) {
+              audioRef.current.src = audioUrl;
+              audioRef.current.load();
+            }
+            
+            // Only sync playback if audio is loaded and ready
+            if (audioRef.current.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+              if (state.isPlaying && audioRef.current.paused) {
+                audioRef.current.play().catch(error => {
+                  console.error('Audio play failed:', error);
+                  setError('Audio playback failed: ' + error.message);
+                });
+              } else if (!state.isPlaying && !audioRef.current.paused) {
+                audioRef.current.pause();
+              }
+            }
+            
+            // Sync volume (convert 0-100 to 0-1)
+            audioRef.current.volume = state.volume / 100;
           }
         }
+      } catch (error) {
+        console.error('Failed to fetch playback state:', error);
       }
-    } catch (error) {
-      console.error('Failed to poll playback state:', error);
-    }
-  }, [isAudioLoading]);
-
-  // Load tracks from backend
-  const loadTracks = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await api.getTracks({ 
-        search: searchQuery || undefined,
-        limit: 100 
-      });
-      if (response.success && response.data) {
-        setTracks(response.data.tracks);
-      } else {
-        setError(response.error || 'Failed to load tracks');
-      }
-    } catch (error) {
-      setError('Failed to connect to backend');
-      console.error('Load tracks error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [searchQuery]);
-
-  // Initialize component
-  useEffect(() => {
-    if (pollStartedRef.current) return; // prevent duplicate intervals (e.g., StrictMode)
-    pollStartedRef.current = true;
-
-    pollPlaybackState();
-
-    // Start polling
-    pollIntervalRef.current = setInterval(pollPlaybackState, 1000);
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-      pollStartedRef.current = false;
     };
-  }, [pollPlaybackState]);
 
-  // Debounced search effect - handles both initial load and search
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      loadTracks();
-    }, 300); // 300ms debounce
+    // Poll every 2 seconds
+    const interval = setInterval(pollPlaybackState, 2000);
+    pollPlaybackState(); // Initial call
 
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, loadTracks]);
+    return () => clearInterval(interval);
+  }, [hasUserInteracted]);
 
-  // Playback controls
-  const handlePlay = async (trackId?: string) => {
+  const handlePlay = useCallback(async (trackId?: string) => {
     try {
-      let response;
-      if (trackId) {
-        response = await api.playTrack(trackId);
-      } else if (playbackState.currentTrack) {
-        response = await api.resumePlayback();
-      } else {
-        return; // No track to play
+      setError(null);
+      // Mark that user has interacted with the page
+      setHasUserInteracted(true);
+      
+      
+      if (!trackId) {
+        console.error('No track ID provided');
+        setError('No track selected');
+        return;
       }
       
-      if (response?.success) {
-        // Immediately try to play audio after user interaction
-        if (audioRef.current && !isAudioLoading) {
-          if (trackId) {
-            // New track - update source and play
-            setIsAudioLoading(true);
-            const url = `http://localhost:8000/playback/audio/${trackId}`;
-            console.log('[Player] Attempting to load', url);
-            // Preflight check to avoid NotSupportedError on non-audio responses
-            try {
-              const headResp = await fetch(url, { method: 'GET', headers: { Range: 'bytes=0-0' } });
-              const ct = headResp.headers.get('content-type') || '';
-              if (!(headResp.status === 200 || headResp.status === 206) || !ct.startsWith('audio/')) {
-                setIsAudioLoading(false);
-                const msg = `Audio not available (status ${headResp.status}, content-type ${ct || 'n/a'})`;
-                console.warn('[Player]', msg, 'for', url);
-                setError(msg);
-                return;
-              }
-            } catch (e) {
-              setIsAudioLoading(false);
-              console.warn('[Player] Preflight fetch failed', e);
-              setError('Failed to reach audio endpoint');
-              return;
-            }
-
-            audioRef.current.src = url;
-            audioRef.current.load();
-            
-            const handleCanPlay = () => {
-              setIsAudioLoading(false);
-              audioRef.current?.play().catch((error) => {
-                if (error.name === 'AbortError') {
-                  console.log('Audio play aborted during loading');
-                } else {
-                  console.error('Audio play error:', error);
-                  setError('Failed to play audio file');
-                }
-              });
-            };
-            
-            const handleError = () => {
-              setIsAudioLoading(false);
-              const el = audioRef.current as HTMLAudioElement | null;
-              const mediaError = el?.error?.code;
-              console.error('Audio element error. mediaErrorCode=', mediaError, 'src=', el?.src);
-              setError('Audio file not found or cannot be loaded');
-            };
-            
-            audioRef.current.addEventListener('canplay', handleCanPlay, { once: true });
-            audioRef.current.addEventListener('error', handleError, { once: true });
-          } else {
-            // Resume current track
-            audioRef.current.play().catch((error) => {
-              if (error.name === 'AbortError') {
-                console.log('Audio resume aborted');
-              } else {
-                console.error('Audio play error:', error);
-                setError('Failed to resume audio');
-              }
-            });
-          }
-        }
+      const response = await api.playTrack(trackId);
+      
+      if (response.success) {
+        // Update local state immediately for better UX
+        setPlaybackState(prev => ({
+          ...prev,
+          isPlaying: true,
+          currentTrack: tracks.find(t => t.youtubeId === trackId) || prev.currentTrack
+        }));
         
-        // Update state
-        pollPlaybackState();
+        // Try to play audio immediately since this is user-initiated
+        if (audioRef.current) {
+          const audioUrl = `http://localhost:8000/playback/audio/${trackId}`;
+          console.log('Attempting to load audio from:', audioUrl);
+          
+          if (audioRef.current.src !== audioUrl) {
+            audioRef.current.src = audioUrl;
+            audioRef.current.load();
+          }
+          
+          // Wait for audio to be ready before playing
+          const playAudio = () => {
+            if (audioRef.current && audioRef.current.readyState >= 2) {
+              audioRef.current.play().catch(error => {
+                console.error('Audio play failed:', error);
+                setError('Audio playback failed: ' + error.message);
+              });
+            } else {
+              // Try again in a bit if not ready
+              setTimeout(playAudio, 100);
+            }
+          };
+          
+          playAudio();
+        }
+      } else {
+        setError(response.error || 'Failed to play track');
       }
     } catch (error) {
+      console.error('Failed to play track:', error);
       setError('Failed to play track');
     }
-  };
+  }, [tracks]);
 
-  const handlePause = async () => {
+  const handlePause = useCallback(async () => {
     try {
-      const response = await api.pausePlayback();
-      if (response.success) {
-        // Immediately pause audio
-        if (audioRef.current && !audioRef.current.paused) {
-          audioRef.current.pause();
-        }
-        // Update state
-        pollPlaybackState();
+      setError(null);
+      // Mark that user has interacted with the page
+      setHasUserInteracted(true);
+      
+      await api.pausePlayback();
+      setPlaybackState(prev => ({ ...prev, isPlaying: false }));
+      
+      // Pause the audio element
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
       }
     } catch (error) {
-      setError('Failed to pause playback');
+      console.error('Failed to pause track:', error);
+      setError('Failed to pause track');
     }
-  };
+  }, []);
 
-  const handleVolumeChange = async (volume: number[]) => {
+  const handleVolumeChange = useCallback(async (value: number[]) => {
+    const volume = Math.round(value[0] * 100);
     try {
-      // Convert 0-1 to 0-100 for backend
-      const response = await api.setVolume(volume[0] * 100);
-      if (response.success) {
-        // Immediately update audio volume
-        if (audioRef.current) {
-          audioRef.current.volume = volume[0];
-        }
-        pollPlaybackState();
-      }
+      await api.setVolume(volume);
+      setPlaybackState(prev => ({ ...prev, volume }));
     } catch (error) {
-      setError('Failed to set volume');
+      console.error('Failed to set volume:', error);
     }
-  };
+  }, []);
 
-  const handleAddToQueue = async (trackId: string) => {
+  const handleSeek = useCallback(async (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!playbackState.currentTrack?.duration) return;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const newPosition = percentage * playbackState.currentTrack.duration;
+    
+    // Update local state immediately for responsiveness
+    setPlaybackState(prev => ({ ...prev, position: newPosition }));
+    
+    // Seek the audio element directly
+    if (audioRef.current && audioRef.current.readyState >= 2) {
+      audioRef.current.currentTime = newPosition;
+    }
+    
+    // Also call backend seek API
     try {
-      const response = await api.addToQueue(trackId);
-      if (response.success) {
-        // Refresh playback state to get updated queue
-        pollPlaybackState();
-      }
+      await api.seek(newPosition);
     } catch (error) {
-      setError('Failed to add to queue');
+      console.error('Seek API call failed:', error);
     }
-  };
+    
+    console.log('Seeking to:', newPosition);
+  }, [playbackState.currentTrack]);
 
-  const handleDownload = async () => {
+
+  const handleDownload = useCallback(async () => {
     if (!downloadUrl.trim()) return;
     
     setIsDownloading(true);
+    setError(null);
+    
     try {
-      const response = await api.downloadAudio(downloadUrl);
-      if (response.success) {
-        setDownloadUrl('');
-        // Refresh tracks after download
-        loadTracks();
-      } else {
-        setError(response.error || 'Download failed');
+      await api.downloadAudio(downloadUrl.trim());
+      setDownloadUrl('');
+      // Refresh tracks after successful download
+      const response = await api.getTracks();
+      if (response.success && response.data) {
+        setTracks(response.data.tracks);
       }
     } catch (error) {
-      setError('Failed to download audio');
+      console.error('Download failed:', error);
+      setError('Download failed');
     } finally {
       setIsDownloading(false);
     }
-  };
+  }, [downloadUrl]);
+
+  const filteredTracks = tracks.filter(track =>
+    track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    track.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (track.album && track.album.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -290,93 +265,124 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   };
 
   return (
-    <div className={cn("flex flex-col h-screen bg-gray-900 text-white", className)}>
-      {/* Hidden audio element for actual playback */}
+    <div className={cn("h-screen flex flex-col bg-gray-900 text-white", className)}>
+      {/* Hidden Audio Element - Only show error if user has interacted */}
       <audio 
         ref={audioRef}
         preload="none"
         onError={(e) => {
-          console.error('Audio error:', e);
-          setError('Failed to load audio file');
+          if (hasUserInteracted) {
+            console.error('Audio error:', e);
+            setError('Failed to load audio file');
+          }
         }}
-        onLoadStart={() => console.log('Audio loading started')}
-        onCanPlay={() => console.log('Audio can play')}
+        onLoadStart={() => {}}
+        onCanPlay={() => {}}
+        onLoadedData={() => {}}
+        onAbort={() => {}}
       />
       
       {/* Header */}
       <div className="border-b border-gray-700 bg-gray-800">
-        {/* Unified Header Row */}
+        {/* Progress Bar Row */}
         <div className="flex items-center justify-between p-3 gap-4">
-          {/* Left: Title */}
-          <h1 className="text-xl font-bold flex-shrink-0">9layer</h1>
-          
-          {/* Center: Player Controls (when track is playing) */}
-          {playbackState.currentTrack && (
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              {/* Track Info */}
-              <div className="min-w-0 flex-shrink">
-                <div className="font-medium text-sm truncate">{playbackState.currentTrack.title}</div>
-                <div className="text-xs text-gray-400 truncate">{playbackState.currentTrack.artist}</div>
-              </div>
-              
-              {/* Playback Controls */}
-              <div className="flex items-center gap-1">
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                  <SkipBack className="w-3 h-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={playbackState.isPlaying ? handlePause : () => handlePlay()}
-                  disabled={!playbackState.currentTrack}
-                  className="h-7 w-7 p-0"
-                >
-                  {playbackState.isPlaying ? (
-                    <Pause className="w-3 h-3" />
-                  ) : (
-                    <Play className="w-3 h-3" />
-                  )}
-                </Button>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0">
-                  <SkipForward className="w-3 h-3" />
-                </Button>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="text-xs text-gray-400 flex-shrink-0">{formatTime(playbackState.position)}</span>
-                <div className="flex-1 h-1 bg-gray-600 rounded">
-                  <div 
-                    className="h-full bg-blue-500 rounded"
-                    style={{ 
-                      width: playbackState.currentTrack?.duration 
-                        ? `${(playbackState.position / playbackState.currentTrack.duration) * 100}%`
-                        : '0%'
-                    }}
-                  />
-                </div>
-                <span className="text-xs text-gray-400 flex-shrink-0">
-                  {playbackState.currentTrack?.duration 
-                    ? formatTime(playbackState.currentTrack.duration)
-                    : '--:--'
-                  }
-                </span>
-              </div>
-
-              {/* Volume Control */}
-              <div className="flex items-center gap-1">
-                <Volume2 className="w-3 h-3" />
-                <Slider
-                  value={[playbackState.volume / 100]}
-                  onValueChange={handleVolumeChange}
-                  max={1}
-                  step={0.1}
-                  className="w-16"
+          {/* Audio Timeline Progress Bar */}
+          <div className="flex-1 px-4 bg-red-500/10 min-h-[20px] flex items-center">
+            <div className="flex items-center gap-3 w-full">
+              <span className="text-xs text-gray-400 min-w-[40px] text-center font-mono bg-green-500/20">
+                {formatTime(playbackState.position)}
+              </span>
+              <div 
+                className="flex-1 bg-gray-800 border border-gray-600 rounded-full cursor-pointer relative group min-w-[200px]"
+                style={{ height: '20px' }}
+                onClick={handleSeek}
+              >
+                {/* Background track - always visible */}
+                <div className="absolute inset-0 bg-gray-700 rounded-full" />
+                
+                {/* Progress fill */}
+                <div 
+                  className="absolute top-0 left-0 h-full bg-blue-500 rounded-full z-10"
+                  style={{ 
+                    width: playbackState.currentTrack?.duration 
+                      ? `${Math.max(2, (playbackState.position / playbackState.currentTrack.duration) * 100)}%`
+                      : '2%'
+                  }}
+                />
+                
+                {/* Playhead - always visible */}
+                <div 
+                  className="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white border-2 border-blue-500 rounded-full shadow-lg cursor-grab z-20"
+                  style={{ 
+                    left: playbackState.currentTrack?.duration 
+                      ? `calc(${(playbackState.position / playbackState.currentTrack.duration) * 100}% - 8px)`
+                      : '0px'
+                  }}
                 />
               </div>
+              <span className="text-xs text-gray-400 min-w-[40px] text-center font-mono bg-green-500/20">
+                {playbackState.currentTrack?.duration 
+                  ? formatTime(playbackState.currentTrack.duration)
+                  : '--:--'
+                }
+              </span>
+            </div>
+          </div>
+
+          {/* Volume Control */}
+          <div className="flex items-center gap-1">
+            <SpeakerWaveIcon className="w-3 h-3" />
+            <Slider
+              value={[playbackState.volume / 100]}
+              onValueChange={handleVolumeChange}
+              max={1}
+              step={0.1}
+              className="w-16"
+            />
+          </div>
+        </div>
+        
+        {/* Controls, Track Info and Navigation Row */}
+        <div className="flex items-center justify-between p-3 gap-4">
+          {/* Playback Controls */}
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
+              style={{ height: '28px', width: '28px' }}
+            >
+              <BackwardIcon className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={playbackState.isPlaying ? handlePause : () => handlePlay()}
+              disabled={!playbackState.currentTrack}
+              className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
+              style={{ height: '28px', width: '28px' }}
+            >
+              {playbackState.isPlaying ? (
+                <PauseIcon className="w-4 h-4" />
+              ) : (
+                <PlayIcon className="w-4 h-4" />
+              )}
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
+              style={{ height: '28px', width: '28px' }}
+            >
+              <ForwardIcon className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Track Info */}
+          {playbackState.currentTrack && (
+            <div className="min-w-0 flex-shrink flex-1 text-center">
+              <div className="font-medium text-sm truncate">{playbackState.currentTrack.title}</div>
+              <div className="text-xs text-gray-400 truncate">{playbackState.currentTrack.artist}</div>
             </div>
           )}
           
-          {/* Right: Navigation */}
+          {/* Navigation */}
           <div className="flex gap-1 flex-shrink-0">
             <Button
               variant={currentView === 'library' ? 'default' : 'ghost'}
@@ -384,7 +390,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               onClick={() => setCurrentView('library')}
               className="h-8 w-8 p-0"
             >
-              <Search className="w-4 h-4" />
+              <MagnifyingGlassIcon className="w-4 h-4" />
             </Button>
             <Button
               variant={currentView === 'queue' ? 'default' : 'ghost'}
@@ -392,7 +398,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               onClick={() => setCurrentView('queue')}
               className="h-8 w-8 p-0"
             >
-              <List className="w-4 h-4" />
+              <ListBulletIcon className="w-4 h-4" />
             </Button>
             <Button
               variant={currentView === 'download' ? 'default' : 'ghost'}
@@ -400,130 +406,99 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               onClick={() => setCurrentView('download')}
               className="h-8 w-8 p-0"
             >
-              <Download className="w-4 h-4" />
+              <ArrowDownTrayIcon className="w-4 h-4" />
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="mx-3 mb-2 p-2 bg-red-900 border border-red-700 rounded text-red-200 text-xs">
-            {error}
-            <button 
-              onClick={() => setError(null)}
-              className="ml-2 text-red-400 hover:text-red-200"
-            >
-              ×
-            </button>
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-600 text-white p-2 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden">
+        {currentView === 'library' && (
+          <div className="h-full flex flex-col">
+            {/* Search */}
+            <div className="p-4 border-b border-gray-700">
+              <input
+                type="text"
+                placeholder="Search tracks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            
+            {/* Track List */}
+            <div className="flex-1 overflow-y-auto">
+              {filteredTracks.map((track) => (
+                <div
+                  key={track.youtubeId}
+                  className="flex items-center justify-between p-3 hover:bg-gray-800 border-b border-gray-800"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate">{track.title}</div>
+                    <div className="text-sm text-gray-400 truncate">{track.artist} • {track.album}</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handlePlay(track.youtubeId)}
+                    className="ml-2 flex-shrink-0"
+                  >
+                    <PlayIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {currentView === 'queue' && (
+          <div className="p-4">
+            <h2 className="text-lg font-semibold mb-4">Queue</h2>
+            {playbackState.queue.length === 0 ? (
+              <p className="text-gray-400">No tracks in queue</p>
+            ) : (
+              <div className="space-y-2">
+                {playbackState.queue.map((track, index) => (
+                  <div key={`${track.youtubeId}-${index}`} className="flex items-center justify-between p-2 bg-gray-800 rounded">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{track.title}</div>
+                      <div className="text-sm text-gray-400 truncate">{track.artist}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentView === 'download' && (
+          <div className="p-4">
+            <h2 className="text-lg font-semibold mb-4">Download Track</h2>
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="Enter YouTube URL..."
+                value={downloadUrl}
+                onChange={(e) => setDownloadUrl(e.target.value)}
+                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+              />
+              <Button
+                onClick={handleDownload}
+                disabled={!downloadUrl.trim() || isDownloading}
+              >
+                {isDownloading ? 'Downloading...' : 'Download'}
+              </Button>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Content Area */}
-        <div className="flex-1 p-4 overflow-y-auto">
-          {currentView === 'library' && (
-            <div>
-              <div className="mb-4">
-                <input
-                  type="text"
-                  placeholder="Search tracks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full p-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                />
-              </div>
-              
-              {isLoading ? (
-                <div className="text-center py-8">Loading tracks...</div>
-              ) : (
-                <div className="space-y-2">
-                  {tracks.map((track) => (
-                    <div
-                      key={track.id}
-                      className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{track.title}</div>
-                        <div className="text-sm text-gray-400">{track.artist}</div>
-                        {track.album && (
-                          <div className="text-xs text-gray-500">{track.album}</div>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handlePlay(track.id)}
-                          disabled={playbackState.currentTrack?.id === track.id && playbackState.isPlaying}
-                        >
-                          <Play className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleAddToQueue(track.id)}
-                        >
-                          <List className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {currentView === 'queue' && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">Queue</h2>
-              {playbackState.queue.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">No tracks in queue</div>
-              ) : (
-                <div className="space-y-2">
-                  {playbackState.queue.map((track, index) => (
-                    <div
-                      key={`${track.id}-${index}`}
-                      className="flex items-center justify-between p-3 bg-gray-800 rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <div className="font-medium">{track.title}</div>
-                        <div className="text-sm text-gray-400">{track.artist}</div>
-                      </div>
-                      <div className="text-sm text-gray-500">#{index + 1}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {currentView === 'download' && (
-            <div>
-              <h2 className="text-xl font-bold mb-4">Download from YouTube</h2>
-              <div className="space-y-4">
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Enter YouTube URL..."
-                    value={downloadUrl}
-                    onChange={(e) => setDownloadUrl(e.target.value)}
-                    className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400"
-                  />
-                </div>
-                <Button
-                  onClick={handleDownload}
-                  disabled={!downloadUrl.trim() || isDownloading}
-                  className="w-full"
-                >
-                  {isDownloading ? 'Downloading...' : 'Download'}
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
     </div>
   );
 };
