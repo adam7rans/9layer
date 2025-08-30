@@ -1,3 +1,5 @@
+![9layer Logo](frontend/public/Frame%202.png)
+
 # 9layer — Local Music Library + Player (Backend + Frontend)
 
 9layer is a local-first music player with a TypeScript backend and a modern Next.js frontend. It plays audio files from your machine that are indexed in a PostgreSQL database.
