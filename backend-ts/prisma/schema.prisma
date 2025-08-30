@@ -51,8 +51,60 @@ model Track {
 
   artist      Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
   album       Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  
+  // Analytics relations
+  listeningSessions ListeningSession[]
+  trackRatings      TrackRating[]
+  playbackSegments  PlaybackSegment[]
 
   @@map("tracks")
+}
+
+// User analytics models
+model ListeningSession {
+  id          String   @id @default(cuid())
+  trackId     String
+  userId      String   @default("default") // For now, single user system
+  startTime   DateTime @default(now())
+  endTime     DateTime?
+  totalTime   Int      @default(0) // Total seconds listened
+  completed   Boolean  @default(false) // Did user listen to completion
+  skipped     Boolean  @default(false) // Did user skip the track
+  createdAt   DateTime @default(now())
+
+  track       Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  segments    PlaybackSegment[]
+
+  @@map("listening_sessions")
+}
+
+model TrackRating {
+  id        String   @id @default(cuid())
+  trackId   String
+  userId    String   @default("default") // For now, single user system
+  rating    Int      @default(0) // Positive/negative points from +/- buttons
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([trackId, userId])
+  @@map("track_ratings")
+}
+
+model PlaybackSegment {
+  id                String   @id @default(cuid())
+  trackId           String
+  sessionId         String
+  startPosition     Int      // Start position in seconds
+  endPosition       Int      // End position in seconds
+  duration          Int      // Duration of this segment in seconds
+  createdAt         DateTime @default(now())
+
+  track             Track            @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  listeningSession  ListeningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("playback_segments")
 }
 
 enum AlbumType {
