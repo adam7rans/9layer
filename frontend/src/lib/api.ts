@@ -148,9 +148,9 @@ export const api = {
           success: true,
           data: data.state
         };
-      } else {
-        return { success: false, error: data.error || 'Failed to get playback state' };
       }
+      
+      return { success: false, error: data.error || 'Failed to get playback state' };
     } catch (error) {
       return { success: false, error: 'Failed to get playback state' };
     }
