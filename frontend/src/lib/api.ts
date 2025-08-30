@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8001';
+const API_BASE = 'http://localhost:8000';
 
 export interface Track {
   id: string;
@@ -39,6 +39,20 @@ export const api = {
       return await response.json();
     } catch (error) {
       return { success: false, error: 'Failed to connect to backend' };
+    }
+  },
+
+  // Get a single random track
+  getRandomTrack: async (): Promise<ApiResponse<{ track: Track }>> => {
+    try {
+      const response = await fetch(`${API_BASE}/tracks/random`);
+      const data = await response.json();
+      if (data.success) {
+        return { success: true, data: { track: data.track } };
+      }
+      return { success: false, error: data.error || 'Failed to fetch random track' };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch random track' };
     }
   },
   
