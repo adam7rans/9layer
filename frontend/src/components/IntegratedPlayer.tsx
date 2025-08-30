@@ -46,25 +46,44 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   // Analytics hook
   const analytics = useAnalytics();
 
-  // Fetch tracks on component mount
+  // Load and play a random track on mount
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
-    
-    const fetchTracks = async () => {
+
+    const playRandom = async () => {
       try {
-        const response = await api.getTracks();
-        if (response.success && response.data) {
-          setTracks(response.data.tracks);
+        const res = await api.getRandomTrack();
+        if (res.success && res.data?.track) {
+          const t = res.data.track;
+          // Keep tracks list minimal: only the current one
+          setTracks([t]);
+          // Start playback directly to avoid dependency on handlePlay declaration order
+          setError(null);
+          const response = await api.playTrack(t.id);
+          if (response.success) {
+            setPlaybackState(prev => ({
+              ...prev,
+              isPlaying: true,
+              currentTrack: t
+            }));
+            if (t.id) {
+              await analytics.startListeningSession(t.id);
+            }
+          } else {
+            setError(response.error || 'Failed to play track');
+          }
+        } else if (!res.success) {
+          setError(res.error || 'Failed to load random track');
         }
-      } catch (error) {
-        console.error('Failed to fetch tracks:', error);
-        setError('Failed to load tracks');
+      } catch (e) {
+        console.error('Failed to load random track:', e);
+        setError('Failed to load random track');
       }
     };
 
-    fetchTracks();
-  }, []);
+    playRandom();
+  }, [analytics]);
 
   // Set up user interaction listeners
   useEffect(() => {
@@ -90,30 +109,52 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   // Get current track index for navigation
   const getCurrentTrackIndex = useCallback(() => {
     if (!playbackState.currentTrack) return -1;
-    return tracks.findIndex(track => track.youtubeId === playbackState.currentTrack?.youtubeId);
+    return tracks.findIndex(track => track.id === playbackState.currentTrack?.id);
   }, [tracks, playbackState.currentTrack]);
 
   // Skip to previous track
   const handlePrevious = useCallback(async () => {
-    const currentIndex = getCurrentTrackIndex();
-    if (currentIndex <= 0) return; // No previous track
-    
-    const previousTrack = tracks[currentIndex - 1];
-    if (previousTrack) {
-      await handlePlay(previousTrack.youtubeId);
+    // Previous now plays a random track
+    try {
+      const res = await api.getRandomTrack();
+      if (res.success && res.data?.track) {
+        const t = res.data.track;
+        setTracks([t]);
+        setError(null);
+        const response = await api.playTrack(t.id);
+        if (response.success) {
+          setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: t }));
+          if (t.id) await analytics.startListeningSession(t.id);
+        } else {
+          setError(response.error || 'Failed to play track');
+        }
+      }
+    } catch (e) {
+      console.error('Failed to play previous (random):', e);
     }
-  }, [getCurrentTrackIndex, tracks]);
+  }, [analytics]);
 
   // Skip to next track
   const handleNext = useCallback(async () => {
-    const currentIndex = getCurrentTrackIndex();
-    if (currentIndex >= tracks.length - 1) return; // No next track
-    
-    const nextTrack = tracks[currentIndex + 1];
-    if (nextTrack) {
-      await handlePlay(nextTrack.youtubeId);
+    // Next now plays a random track
+    try {
+      const res = await api.getRandomTrack();
+      if (res.success && res.data?.track) {
+        const t = res.data.track;
+        setTracks([t]);
+        setError(null);
+        const response = await api.playTrack(t.id);
+        if (response.success) {
+          setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: t }));
+          if (t.id) await analytics.startListeningSession(t.id);
+        } else {
+          setError(response.error || 'Failed to play track');
+        }
+      }
+    } catch (e) {
+      console.error('Failed to play next (random):', e);
     }
-  }, [getCurrentTrackIndex, tracks]);
+  }, [analytics]);
 
   // Poll for playback state updates
   useEffect(() => {
@@ -127,7 +168,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
           // Sync HTML5 audio element with backend state
           if (audioRef.current && state.currentTrack) {
-            const audioUrl = `http://localhost:8001/playback/audio/${state.currentTrack.youtubeId}`;
+            const audioUrl = `http://localhost:8000/playback/audio/${state.currentTrack.id}`;
             
             // Update audio source if different
             if (audioRef.current.src !== audioUrl) {
@@ -170,6 +211,19 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     return () => clearInterval(interval);
   }, [hasUserInteracted]);
 
+  // Auto-advance: when the audio element ends, play a new random track
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onEnded = () => {
+      handleNext();
+    };
+    audio.addEventListener('ended', onEnded);
+    return () => {
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, [handleNext]);
+
   const handlePlay = useCallback(async (trackId?: string) => {
     try {
       setError(null);
@@ -184,7 +238,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       const response = await api.playTrack(trackId);
       
       if (response.success) {
-        const track = tracks.find(t => t.youtubeId === trackId);
+        const track = tracks.find(t => t.id === trackId);
         
         // Update local state immediately for better UX
         setPlaybackState(prev => ({
@@ -412,7 +466,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           <div className="flex items-center gap-1">
             <Button 
               onClick={handlePrevious}
-              disabled={getCurrentTrackIndex() <= 0}
+              disabled={false}
               variant="ghost" 
               className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
               style={{ height: '28px', width: '28px' }}
@@ -420,7 +474,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               <BackwardIcon className="w-4 h-4" />
             </Button>
             <Button
-              onClick={playbackState.isPlaying ? handlePause : () => handlePlay()}
+              onClick={playbackState.isPlaying ? handlePause : () => handlePlay(playbackState.currentTrack?.id)}
               disabled={!playbackState.currentTrack}
               className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
               style={{ height: '28px', width: '28px' }}
@@ -433,7 +487,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
             </Button>
             <Button 
               onClick={handleNext}
-              disabled={getCurrentTrackIndex() >= tracks.length - 1}
+              disabled={false}
               variant="ghost" 
               className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
               style={{ height: '28px', width: '28px' }}
@@ -478,8 +532,8 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               onClick={() => {
                 setShowAutoplayHelp(false);
                 setHasUserInteracted(true);
-                if (playbackState.currentTrack?.youtubeId) {
-                  handlePlay(playbackState.currentTrack.youtubeId);
+                if (playbackState.currentTrack?.id) {
+                  handlePlay(playbackState.currentTrack.id);
                 }
               }}
             >
@@ -516,14 +570,14 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               ) : (
                 <div className="space-y-1 p-2">
                   {filteredTracks.map((track) => (
-                    <div key={track.youtubeId} className="flex items-center gap-2 p-2 bg-gray-800 rounded hover:bg-gray-700 transition-colors">
+                    <div key={track.id} className="flex items-center gap-2 p-2 bg-gray-800 rounded hover:bg-gray-700 transition-colors">
                       {/* Play Button */}
                       <Button
-                        onClick={() => handlePlay(track.youtubeId)}
+                        onClick={() => handlePlay(track.id)}
                         className="h-8 w-8 p-0 flex-shrink-0"
-                        variant={playbackState.currentTrack?.youtubeId === track.youtubeId && playbackState.isPlaying ? "default" : "ghost"}
+                        variant={playbackState.currentTrack?.id === track.id && playbackState.isPlaying ? "default" : "ghost"}
                       >
-                        {playbackState.currentTrack?.youtubeId === track.youtubeId && playbackState.isPlaying ? (
+                        {playbackState.currentTrack?.id === track.id && playbackState.isPlaying ? (
                           <PauseIcon className="w-4 h-4" />
                         ) : (
                           <PlayIcon className="w-4 h-4" />
