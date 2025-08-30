@@ -1,192 +1,135 @@
-# 9layer - Advanced YouTube Downloader & Music Player
+# 9layer — Local Music Library + Player (Backend + Frontend)
+
+9layer is a local-first music player with a TypeScript backend and a modern Next.js frontend. It plays audio files from your machine that are indexed in a PostgreSQL database.
+
+Important: You must have music files available locally for playback. The in-app YouTube download feature is experimental/untested and may not work yet.
 
 ## Features
-- **Smart Downloading**: Videos, audio-only, or entire playlists
-- **Music Player**: Beautiful terminal interface with playback controls
-- **Audio Management**: Automatic organization in `/music` directory
-- **System Integration**: Volume controls and macOS/Windows support
-- **PostgreSQL Backend**: Scalable database for music metadata
+- Local library playback with queue and controls
+- Search across artists/albums/tracks
+- Modern UI built with Tailwind and shadcn/ui
+- TypeScript/Fastify backend with Prisma + PostgreSQL
+- REST API integration (WebSocket realtime planned)
 
-## Installation
+## Architecture
+- `backend-ts/` — Fastify (TypeScript), Prisma ORM, PostgreSQL
+- `frontend/` — Next.js app (runs on port 3004 by default)
+- Shared: audio files reside on your filesystem; DB stores metadata and file paths
 
-### Prerequisites
-- Python 3.8+
+## Prerequisites
+- Node.js 18+
 - PostgreSQL 14+
-- ffmpeg (for audio conversion)
+- ffmpeg (recommended for future/optional conversion)
 
-### System Dependencies
+macOS:
 ```bash
-# macOS
 brew install postgresql@14 ffmpeg
+```
 
-# Ubuntu/Debian
+Ubuntu/Debian:
+```bash
 sudo apt update
 sudo apt install postgresql-14 ffmpeg
 ```
 
-### Python Dependencies
-```bash
-pip install -r requirements.txt
+## Database Setup
+Create a database and user (or use `setup_postgres.sql` in the repo as a reference):
+```sql
+CREATE DATABASE music_player;
+CREATE USER music_user WITH PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE music_player TO music_user;
 ```
 
-### Database Setup
-1. Create PostgreSQL database and user:
-   ```sql
-   CREATE DATABASE music_player;
-   CREATE USER music_user WITH PASSWORD 'your_secure_password';
-   GRANT ALL PRIVILEGES ON DATABASE music_player TO music_user;
-   ```
-
-2. Configure environment variables in `.env`:
-   ```
-   DATABASE_URL=postgresql://music_user:your_secure_password@localhost:5432/music_player
-   ```
-
-## 9layer Downloader Usage
-
-### Basic Commands
+## Backend Setup (`backend-ts/`)
+1) Install deps
 ```bash
-# Download video (best quality)
-python downloader.py "https://youtube.com/watch?v=VIDEO_ID"
-
-# Download audio only (high quality MP3)
-python downloader.py "URL" --audio-only
-
-# Custom download location
-python downloader.py "URL" --path "~/Music/MyAlbum"
+npm install
 ```
 
-### Advanced Features
-```bash
-# Download entire playlist (video or audio)
-python downloader.py "PLAYLIST_URL" --audio-only
-
-# Download specific playlist items (e.g., tracks 5-10)
-python downloader.py "PLAYLIST_URL" --playlist-items 5-10
-
-# Custom audio quality (192kbps)
-python downloader.py "URL" --audio-only --quality 192
+2) Environment
+Create `backend-ts/.env` (see `.env.example` if present):
+```
+DATABASE_URL=postgresql://music_user:your_secure_password@localhost:5432/music_player
+PORT=8000
+CORS_ORIGIN=http://localhost:3004
 ```
 
-## 9layer Music Player
+3) Prisma
 ```bash
-python 9layer.py
+npx prisma generate
+npx prisma migrate dev
 ```
 
-### Interactive Controls
-| Key | Action |
-|-----|--------|
-| `N` | Next track |
-| `P` | Previous track |
-| `R` | Toggle random mode |
-| `=` | Volume up |
-| `-` | Volume down |
-| `M` | Mute toggle |
-| `Q` | Quit player |
+4) Run the server
+```bash
+npm run dev
+# Server listens on http://localhost:8000
+```
 
-## Project Structure
+Notes:
+- REST endpoints for playback/queue/search are under `backend-ts/src/routes/` (e.g. `playback.routes.ts`).
+- WebSocket support is planned; a polling fallback is used by the frontend today.
+
+## Frontend Setup (`frontend/`)
+1) Install deps
+```bash
+npm install
+```
+
+2) Environment (if used)
+Create `frontend/.env.local` and point to the backend:
+```
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+```
+
+3) Run the app
+```bash
+npm run dev
+# Open http://localhost:3004
+```
+
+## Adding Music (Required)
+You need audio files on disk and corresponding rows in PostgreSQL so the player can find and play them.
+
+Options:
+1) Manual library entries (recommended for now)
+   - Place audio files (mp3/webm/opus) on your filesystem.
+   - Insert track metadata and absolute file paths into the DB using Prisma Studio:
+     ```bash
+     npx prisma studio
+     ```
+   - Or write a small seed script to create `Artist`, `Album`, `Track` records.
+
+2) In-app YouTube downloader (experimental)
+   - The UI exposes a download form, but this path is not fully tested and may fail.
+   - If you try it, ensure ffmpeg is installed. Expect bugs; contributions are welcome.
+
+## Usage
+- Start backend on 8000 and frontend on 3004.
+- Open the app, use search to locate tracks, and click play.
+- Player supports previous/next, volume, and auto-advance after a user interaction (browser policy).
+
+## Troubleshooting
+- No sound / NotAllowedError: Interact with the page first (click/tap/keydown) before pressing Play due to browser autoplay rules.
+- "No supported source" errors: ensure your file paths are valid, files exist, and the backend returns correct `content-type` (e.g., `audio/mpeg`).
+- CORS: confirm `CORS_ORIGIN` matches `http://localhost:3004` and the frontend points to `http://localhost:8000`.
+- Test file: open `frontend/public/audio-test.html` in a browser to confirm your browser can play basic audio.
+
+## Project Structure (key parts)
 ```
 9layer/
-├── musicplayer/         # Core music player package
-│   ├── __init__.py      # Package initializer
-│   ├── cli.py           # Command-line interface
-│   ├── controller.py    # Main application logic
-│   ├── config.py        # Configuration handling
-│   └── helpers/         # Helper modules
-│       ├── __init__.py  # Helpers package initializer
-│       ├── files.py     # File system operations
-│       ├── playback.py  # Playback management
-│       ├── db.py        # Database interactions
-│       ├── system.py    # System-level utilities
-│       └── ui.py        # Terminal UI components
-├── tests/               # Unit and integration tests
-├── backend/             # FastAPI backend
-├── music/               # Downloaded audio storage
-├── migrations/          # Database migrations
-├── .env                 # Environment variables
-├── requirements.txt     # Python dependencies
-├── pyproject.toml       # Project configuration
-└── README.md            # This documentation
+├── backend-ts/
+│   ├── prisma/
+│   └── src/
+├── frontend/
+│   ├── public/
+│   └── src/
+├── setup_postgres.sql
+└── README.md
 ```
 
-## Development
-
-### Running Tests
-```bash
-# Run all tests
-pytest
-
-# Run with coverage report
-pytest --cov=app --cov-report=term-missing
-```
-
-### Database Migrations
-Database migrations are handled automatically on startup. For manual migrations:
-
-```bash
-# Show current migration status
-alembic current
-
-# Create a new migration
-alembic revision --autogenerate -m "description of changes"
-
-# Apply migrations
-alembic upgrade head
-```
-
-## Requirements
-- Python 3.8+
-- PostgreSQL 14+
-- yt-dlp (YouTube downloader)
-- ffmpeg (for audio conversion)
-- See `requirements.txt` for Python dependencies
-
-## Migration to PostgreSQL
-
-### Breaking Changes
-
-As of June 2024, the application has been migrated from SQLite to PostgreSQL. This change brings:
-
-1. **Required PostgreSQL** - SQLite is no longer supported
-2. **New Setup Required** - All users must set up PostgreSQL and configure the connection
-3. **Data Migration** - Existing SQLite data needs to be migrated to PostgreSQL
-
-### Migration Steps
-
-1. **Backup Existing Data**
-   ```bash
-   # Backup your existing SQLite database
-   cp music_metadata.db music_metadata.backup.db
-   ```
-
-2. **Install PostgreSQL**
-   ```bash
-   # macOS
-   brew install postgresql@14
-   
-   # Ubuntu/Debian
-   sudo apt update
-   sudo apt install postgresql-14
-   ```
-
-3. **Set Up Database**
-   ```sql
-   CREATE DATABASE music_player;
-   CREATE USER music_user WITH PASSWORD 'your_secure_password';
-   GRANT ALL PRIVILEGES ON DATABASE music_player TO music_user;
-   ```
-
-4. **Update Configuration**
-   Create or update `.env` with:
-   ```
-   DATABASE_URL=postgresql://music_user:your_secure_password@localhost:5432/music_player
-   ```
-
-5. **Run Migrations**
-   ```bash
-   # The application will automatically create tables on first run
-   python downloader.py --help
-   ```
+## Contributing
+Issues and PRs are welcome. Areas of focus: downloader reliability, WebSocket realtime updates, library import tools.
 
 ## License
-Open source - [MIT License](LICENSE)
+MIT
