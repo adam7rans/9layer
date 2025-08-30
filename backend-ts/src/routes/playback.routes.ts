@@ -188,6 +188,86 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
     }
   });
 
+  /**
+   * Get a single random track
+   * GET /tracks/random
+   */
+  fastify.get('/tracks/random', {
+    schema: {
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            track: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                title: { type: 'string' },
+                artist: { type: 'string' },
+                album: { type: 'string' },
+                artistId: { type: 'string' },
+                albumId: { type: 'string' },
+                duration: { type: 'number' },
+                filePath: { type: 'string' },
+                fileSize: { type: 'number' },
+                youtubeId: { type: 'string' },
+                likeability: { type: 'number' }
+              }
+            }
+          }
+        },
+        404: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const total = await prisma.track.count();
+      if (total === 0) {
+        return reply.code(404).send({ success: false, error: 'No tracks available' });
+      }
+
+      const skip = Math.floor(Math.random() * total);
+      const results = await prisma.track.findMany({
+        include: { artist: true, album: true },
+        skip,
+        take: 1,
+        orderBy: { id: 'asc' }
+      });
+
+      const t = results[0];
+      const formatted = {
+        id: t.id,
+        title: t.title,
+        artist: t.artist?.name || 'Unknown Artist',
+        album: t.album?.title || 'Unknown Album',
+        artistId: t.artistId,
+        albumId: t.albumId,
+        duration: t.duration,
+        filePath: t.filePath,
+        fileSize: t.fileSize,
+        youtubeId: t.youtubeId ?? undefined,
+        likeability: t.likeability,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt
+      };
+
+      return reply.send({ success: true, track: formatted });
+    } catch (error) {
+      console.error('Get random track error:', error);
+      return reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  });
+
   fastify.post('/playback/play/:trackId', {
     schema: {
       params: {
