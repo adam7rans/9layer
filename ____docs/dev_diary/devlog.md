@@ -6,6 +6,18 @@ This file tracks development progress, features implemented, and issues resolved
 
 ```json
 {
+  "timestamp": "2025-08-30T05:43:12Z",
+  "description": "fix: prevent autoplay policy violations and correct Enable Audio button track id",
+  "details": "Removed programmatic user-interaction flag setting from non-user actions (auto-advance/next) to comply with browser autoplay policies and reduce NotAllowedError noise. Updated the 'Enable Audio' button to invoke playback using the correct track identifier (id instead of youtubeId). Playback now starts cleanly after real user interaction and the help banner behaves accurately.",
+  "tags": ["frontend", "player", "bugfix", "autoplay"],
+  "files_modified": [
+    "frontend/src/components/IntegratedPlayer.tsx"
+  ]
+}
+```
+
+```json
+{
   "timestamp": "2025-08-30T05:23:53Z",
   "description": "fix: resolve browser autoplay policy violations and implement complete audio playback functionality",
   "details": "Fixed critical audio playback issues preventing music from playing on page load. Resolved NotAllowedError caused by attempting autoplay without user interaction by implementing proper user interaction detection with click/keydown/touchstart listeners. Added functional skip forward/backward buttons with proper track navigation and boundary checking. Implemented auto-advance functionality to automatically play next track when current track ends. Improved audio element synchronization with backend state and enhanced error handling with clear user feedback. Removed complex forced autoplay logic in favor of clean, browser-compliant audio management.",
