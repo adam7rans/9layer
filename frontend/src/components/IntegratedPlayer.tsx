@@ -463,36 +463,36 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         
         {/* Centered Playback Controls */}
         <div className="flex justify-center p-3">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
             <Button 
               onClick={handlePrevious}
               disabled={false}
               variant="ghost" 
-              className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
-              style={{ height: '28px', width: '28px' }}
+              className="h-[50px] w-[50px] p-0"
+              title="Previous"
             >
-              <BackwardIcon className="w-4 h-4" />
+              <BackwardIcon className="w-5 h-5" />
             </Button>
             <Button
               onClick={playbackState.isPlaying ? handlePause : () => handlePlay(playbackState.currentTrack?.id)}
               disabled={!playbackState.currentTrack}
-              className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
-              style={{ height: '28px', width: '28px' }}
+              className="h-[50px] w-[50px] p-0 rounded-full"
+              title={playbackState.isPlaying ? 'Pause' : 'Play'}
             >
               {playbackState.isPlaying ? (
-                <PauseIcon className="w-4 h-4" />
+                <PauseIcon className="w-6 h-6" />
               ) : (
-                <PlayIcon className="w-4 h-4" />
+                <PlayIcon className="w-6 h-6" />
               )}
             </Button>
             <Button 
               onClick={handleNext}
               disabled={false}
               variant="ghost" 
-              className="h-7 w-7 p-0 min-h-[28px] min-w-[28px] max-h-[28px] max-w-[28px]"
-              style={{ height: '28px', width: '28px' }}
+              className="h-[50px] w-[50px] p-0"
+              title="Next"
             >
-              <ForwardIcon className="w-4 h-4" />
+              <ForwardIcon className="w-5 h-5" />
             </Button>
           </div>
         </div>
@@ -504,6 +504,25 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
             <div className="text-xs text-gray-400 truncate">
               {playbackState.currentTrack.artist}
               {playbackState.currentTrack.album && ` • ${playbackState.currentTrack.album.replace(/^Album - /, '')}`}
+            </div>
+            {/* Plus / Minus action buttons under metadata */}
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <Button
+                onClick={() => playbackState.currentTrack?.id && handleIncrementRating(playbackState.currentTrack.id)}
+                className="h-[50px] w-[50px] p-0"
+                variant="outline"
+                title="Increase rating"
+              >
+                <PlusIcon className="w-5 h-5" />
+              </Button>
+              <Button
+                onClick={() => playbackState.currentTrack?.id && handleDecrementRating(playbackState.currentTrack.id)}
+                className="h-[50px] w-[50px] p-0"
+                variant="outline"
+                title="Decrease rating"
+              >
+                <MinusIcon className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         )}

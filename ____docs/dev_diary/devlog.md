@@ -6,6 +6,18 @@ This file tracks development progress, features implemented, and issues resolved
 
 ```json
 {
+  "timestamp": "2025-08-30T18:18:09Z",
+  "description": "fix(ui): standardize player controls to 50x50 and add plus/minus buttons under metadata",
+  "details": "Updated IntegratedPlayer to render 50x50 Previous/Play/Next controls for consistent sizing and accessibility. Added large 50x50 plus/minus action buttons directly under the track title/artist section to adjust rating. Ensured existing Heroicons imports are used and handlers are wired to analytics rating functions.",
+  "tags": ["frontend", "player", "ui", "feature", "bugfix"],
+  "files_modified": [
+    "frontend/src/components/IntegratedPlayer.tsx"
+  ]
+}
+```
+
+```json
+{
   "timestamp": "2025-08-30T05:43:12Z",
   "description": "fix: prevent autoplay policy violations and correct Enable Audio button track id",
   "details": "Removed programmatic user-interaction flag setting from non-user actions (auto-advance/next) to comply with browser autoplay policies and reduce NotAllowedError noise. Updated the 'Enable Audio' button to invoke playback using the correct track identifier (id instead of youtubeId). Playback now starts cleanly after real user interaction and the help banner behaves accurately.",
