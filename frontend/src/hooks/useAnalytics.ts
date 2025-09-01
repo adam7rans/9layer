@@ -20,6 +20,7 @@ export const useAnalytics = () => {
 
   // Start a new listening session
   const startListeningSession = useCallback(async (trackId: string) => {
+    console.log('[ANALYTICS HOOK] Starting listening session for track:', trackId);
     try {
       const response = await api.analytics.startSession(trackId);
       if (response.success && response.data) {
@@ -29,6 +30,7 @@ export const useAnalytics = () => {
           startTime: new Date(),
           segments: []
         };
+        console.log('[ANALYTICS HOOK] Session started:', session.id);
         setCurrentSession(session);
         segmentStartRef.current = 0;
         lastPositionRef.current = 0;
@@ -152,6 +154,7 @@ export const useAnalytics = () => {
   const incrementRating = useCallback(async (trackId: string) => {
     try {
       const response = await api.analytics.incrementRating(trackId);
+      console.log('[ANALYTICS HOOK] Increment rating response:', response);
       if (response.success && response.data) {
         setTrackRatings(prev => ({
           ...prev,
@@ -168,6 +171,7 @@ export const useAnalytics = () => {
   const decrementRating = useCallback(async (trackId: string) => {
     try {
       const response = await api.analytics.decrementRating(trackId);
+      console.log('[ANALYTICS HOOK] Decrement rating response:', response);
       if (response.success && response.data) {
         setTrackRatings(prev => ({
           ...prev,

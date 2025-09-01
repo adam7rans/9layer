@@ -385,6 +385,20 @@ export const api = {
       } catch (error) {
         return { success: false, error: 'Failed to get listening history' };
       }
+    },
+
+    // Get rated tracks
+    getRatedTracks: async (userId?: string, filter?: 'positive' | 'negative' | 'all'): Promise<ApiResponse<any>> => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (userId) queryParams.set('userId', userId);
+        if (filter) queryParams.set('filter', filter);
+        
+        const response = await fetch(`${API_BASE}/analytics/rated-tracks?${queryParams}`);
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to get rated tracks' };
+      }
     }
   }
 };

@@ -19,6 +19,7 @@ interface AnalyticsData {
   topTracks: any[];
   recentlyPlayed: any[];
   listeningHistory: any[];
+  ratedTracks: any[];
 }
 
 interface AnalyticsDashboardProps {
@@ -28,6 +29,7 @@ interface AnalyticsDashboardProps {
   getTrackRating: (trackId: string) => number;
   playbackState: any;
   tracks: Track[];
+  refreshTrigger?: number; // Add this to trigger refreshes
 }
 
 const AnalyticsDashboard = ({ 
@@ -36,12 +38,14 @@ const AnalyticsDashboard = ({
   onDecrementRating, 
   getTrackRating,
   playbackState,
-  tracks 
+  tracks,
+  refreshTrigger 
 }: AnalyticsDashboardProps) => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
     topTracks: [],
     recentlyPlayed: [],
-    listeningHistory: []
+    listeningHistory: [],
+    ratedTracks: []
   });
   const [activeTab, setActiveTab] = useState<'top' | 'recent' | 'history' | 'rated' | 'most-played'>('top');
   const [loading, setLoading] = useState(true);
@@ -64,15 +68,17 @@ const AnalyticsDashboard = ({
   const loadAnalyticsData = useCallback(async () => {
     setLoading(true);
     try {
-      const [topTracksRes, historyRes] = await Promise.all([
+      const [topTracksRes, historyRes, ratedTracksRes] = await Promise.all([
         api.analytics.getTopTracks('default', 50),
-        api.analytics.getHistory('default', 100)
+        api.analytics.getHistory('default', 100),
+        api.analytics.getRatedTracks('default', ratedFilter)
       ]);
 
       const newData: AnalyticsData = {
         topTracks: topTracksRes.success ? topTracksRes.data : [],
         recentlyPlayed: [],
-        listeningHistory: historyRes.success ? historyRes.data : []
+        listeningHistory: historyRes.success ? historyRes.data : [],
+        ratedTracks: ratedTracksRes.success ? ratedTracksRes.data : []
       };
 
       // Extract recently played from history (last 20 unique tracks)
@@ -91,11 +97,18 @@ const AnalyticsDashboard = ({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ratedFilter]);
 
   useEffect(() => {
     loadAnalyticsData();
   }, [loadAnalyticsData]);
+
+  // Refresh data when refreshTrigger changes (ratings or new plays)
+  useEffect(() => {
+    if (refreshTrigger) {
+      loadAnalyticsData();
+    }
+  }, [refreshTrigger, loadAnalyticsData]);
 
   // Filter tracks by rating
   const getFilteredRatedTracks = () => {
@@ -117,20 +130,28 @@ const AnalyticsDashboard = ({
   // Get most played tracks (from analytics data)
   const getMostPlayedTracks = () => {
     const trackPlayCounts = new Map();
+    const uniqueTracks = new Map();
     
+    // Count plays and collect unique track info
     analyticsData.listeningHistory.forEach(session => {
       const trackId = session.track.id;
       trackPlayCounts.set(trackId, (trackPlayCounts.get(trackId) || 0) + 1);
+      
+      // Store track info (will be overwritten but that's fine since it's the same track)
+      uniqueTracks.set(trackId, session.track);
     });
 
-    return tracks
-      .map(track => ({
+    // Build array of tracks with play counts
+    const mostPlayedList = Array.from(uniqueTracks.entries())
+      .map(([trackId, track]) => ({
         ...track,
-        playCount: trackPlayCounts.get(track.id) || 0
+        playCount: trackPlayCounts.get(trackId) || 0
       }))
       .filter(track => track.playCount > 0)
       .sort((a, b) => b.playCount - a.playCount)
       .slice(0, 50);
+
+    return mostPlayedList;
   };
 
   // Render track item
@@ -374,18 +395,18 @@ const AnalyticsDashboard = ({
             <p className="text-gray-400 text-sm mb-4">
               Songs you've rated using the +/- buttons, sorted by rating
             </p>
-            {(() => {
-              const filteredTracks = getFilteredRatedTracks();
-              return filteredTracks.length === 0 ? (
-                <div className="text-center text-gray-400 py-8">
-                  No rated songs found. Use the +/- buttons to rate tracks!
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredTracks.map((track) => renderTrackItem(track))}
-                </div>
-              );
-            })()}
+            {analyticsData.ratedTracks.length === 0 ? (
+              <div className="text-center text-gray-400 py-8">
+                No rated songs found. Use the +/- buttons to rate tracks!
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {analyticsData.ratedTracks.map((ratingData) => {
+                  const track = { ...ratingData.track, rating: ratingData.rating };
+                  return renderTrackItem(track);
+                })}
+              </div>
+            )}
           </div>
         )}
 

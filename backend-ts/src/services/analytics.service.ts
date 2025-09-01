@@ -29,6 +29,7 @@ export interface TrackRatingData {
 export class AnalyticsService {
   // Create a new listening session
   async createListeningSession(data: ListeningSessionData) {
+    console.log('[ANALYTICS] Creating listening session:', data);
     const createData: any = {
       trackId: data.trackId,
       userId: data.userId || 'default',
@@ -42,7 +43,7 @@ export class AnalyticsService {
       createData.endTime = data.endTime;
     }
     
-    return await prisma.listeningSession.create({
+    const session = await prisma.listeningSession.create({
       data: createData,
       include: {
         track: {
@@ -53,10 +54,13 @@ export class AnalyticsService {
         },
       },
     });
+    console.log('[ANALYTICS] Session created:', session.id);
+    return session;
   }
 
   // Update an existing listening session
   async updateListeningSession(sessionId: string, data: Partial<ListeningSessionData>) {
+    console.log('[ANALYTICS] Updating session:', sessionId, data);
     const updateData: any = {};
     
     if (data.endTime !== undefined) updateData.endTime = data.endTime;
@@ -64,7 +68,7 @@ export class AnalyticsService {
     if (data.completed !== undefined) updateData.completed = data.completed;
     if (data.skipped !== undefined) updateData.skipped = data.skipped;
     
-    return await prisma.listeningSession.update({
+    const session = await prisma.listeningSession.update({
       where: { id: sessionId },
       data: updateData,
       include: {
@@ -76,6 +80,8 @@ export class AnalyticsService {
         },
       },
     });
+    console.log('[ANALYTICS] Session updated:', sessionId);
+    return session;
   }
 
   // Add a playback segment to track which parts of a song were listened to
@@ -93,9 +99,10 @@ export class AnalyticsService {
 
   // Update or create track rating (plus/minus buttons)
   async updateTrackRating(data: TrackRatingData) {
+    console.log('[ANALYTICS] Updating track rating:', data);
     const userId = data.userId || 'default';
     
-    return await prisma.trackRating.upsert({
+    const result = await prisma.trackRating.upsert({
       where: {
         trackId_userId: {
           trackId: data.trackId,
@@ -119,6 +126,8 @@ export class AnalyticsService {
         },
       },
     });
+    console.log('[ANALYTICS] Rating updated:', result.rating);
+    return result;
   }
 
   // Get track analytics summary
@@ -250,6 +259,36 @@ export class AnalyticsService {
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
+    });
+  }
+
+  // Get all tracks with ratings
+  async getRatedTracks(userId: string = 'default', filter?: 'positive' | 'negative' | 'all') {
+    let ratingFilter = {};
+    
+    if (filter === 'positive') {
+      ratingFilter = { rating: { gt: 0 } };
+    } else if (filter === 'negative') {
+      ratingFilter = { rating: { lt: 0 } };
+    } else {
+      // 'all' or undefined - show all rated tracks (non-zero)
+      ratingFilter = { rating: { not: 0 } };
+    }
+
+    return await prisma.trackRating.findMany({
+      where: {
+        userId,
+        ...ratingFilter,
+      },
+      include: {
+        track: {
+          include: {
+            artist: true,
+            album: true,
+          },
+        },
+      },
+      orderBy: { rating: 'desc' },
     });
   }
 }

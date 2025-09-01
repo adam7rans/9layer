@@ -125,10 +125,10 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
         userId: userId || 'default',
       });
 
-      return reply.send(trackRating);
+      return reply.send({ success: true, data: trackRating });
     } catch (error) {
       console.error('Error incrementing track rating:', error);
-      return reply.status(500).send({ error: 'Failed to increment track rating' });
+      return reply.status(500).send({ success: false, error: 'Failed to increment track rating' });
     }
   });
 
@@ -148,10 +148,10 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
         userId: userId || 'default',
       });
 
-      return reply.send(trackRating);
+      return reply.send({ success: true, data: trackRating });
     } catch (error) {
       console.error('Error decrementing track rating:', error);
-      return reply.status(500).send({ error: 'Failed to decrement track rating' });
+      return reply.status(500).send({ success: false, error: 'Failed to decrement track rating' });
     }
   });
 
@@ -179,10 +179,10 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
         limit ? parseInt(limit) : 20
       );
 
-      return reply.send(topTracks);
+      return reply.send({ success: true, data: topTracks });
     } catch (error) {
       console.error('Error getting top tracks:', error);
-      return reply.status(500).send({ error: 'Failed to get top tracks' });
+      return reply.status(500).send({ success: false, error: 'Failed to get top tracks' });
     }
   });
 
@@ -196,10 +196,24 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
         limit ? parseInt(limit) : 50
       );
 
-      return reply.send(history);
+      return reply.send({ success: true, data: history });
     } catch (error) {
       console.error('Error getting listening history:', error);
-      return reply.status(500).send({ error: 'Failed to get listening history' });
+      return reply.status(500).send({ success: false, error: 'Failed to get listening history' });
+    }
+  });
+
+  // Get all rated tracks
+  fastify.get('/analytics/rated-tracks', async (request, reply) => {
+    try {
+      const { userId, filter } = request.query as { userId?: string; filter?: 'positive' | 'negative' | 'all' };
+      
+      const ratedTracks = await analyticsService.getRatedTracks(userId || 'default', filter);
+
+      return reply.send({ success: true, data: ratedTracks });
+    } catch (error) {
+      console.error('Error getting rated tracks:', error);
+      return reply.status(500).send({ success: false, error: 'Failed to get rated tracks' });
     }
   });
 }

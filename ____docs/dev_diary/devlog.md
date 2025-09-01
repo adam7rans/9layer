@@ -6,6 +6,18 @@ This file tracks development progress, features implemented, and issues resolved
 
 ```json
 {
+  "timestamp": "2025-09-01T18:45:00Z",
+  "description": "fix: resolve volume control scaling, snapping, and default issues",
+  "details": "Fixed three critical volume control issues: (1) 3300% scaling error by adding proper volume clamping to 0-1 range before multiplication, (2) slider handle snapping behavior by extending polling disable period from 2 to 3 seconds and improving volume normalization logic, (3) unreasonable default volume (10000%) by adding initialization effect to detect and correct backend volume >100. Enhanced volume handling with smart normalization that handles mixed 0-100 and 0-1 scales gracefully. Added defensive programming with multiple layers of validation to prevent display errors.",
+  "tags": ["frontend", "bugfix", "volume-control", "ui", "analytics", "player"],
+  "files_modified": [
+    "frontend/src/components/IntegratedPlayer.tsx"
+  ]
+}
+```
+
+```json
+{
   "timestamp": "2025-08-30T23:08:24+02:00",
   "description": "feat/ui+fix: add 'Play on this device' button, enable LAN/mobile via dynamic API base and dev CORS",
   "details": "Reintroduced and repositioned the local playback control as a clear button labeled 'Play on this device' under the track metadata. Switched frontend to a dynamic API base (NEXT_PUBLIC_API_BASE override, else window hostname:8000) so phones on LAN resolve to the backend. Expanded backend CORS to allow LAN origins in non-production while keeping production locked down. This fixes 'Failed to fetch random track' on mobile and surfaces the local playback control on all devices.",

@@ -29,7 +29,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
     isPlaying: false,
     position: 0,
-    volume: 0.8,
+    volume: 0.8, // Start at 80% volume (0.8 on 0-1 scale) 
     queue: []
   });
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -41,8 +41,10 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [showAutoplayHelp, setShowAutoplayHelp] = useState(false);
   const [localPlayback, setLocalPlayback] = useState(true);
+  const [analyticsRefreshTrigger, setAnalyticsRefreshTrigger] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const initRef = useRef(false);
+  const isUserAdjustingVolume = useRef(false);
   
   // Analytics hook
   const analytics = useAnalytics();
@@ -70,6 +72,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
             }));
             if (t.id) {
               await analytics.startListeningSession(t.id);
+              setAnalyticsRefreshTrigger(prev => prev + 1);
             }
           } else {
             setError(response.error || 'Failed to play track');
@@ -125,7 +128,10 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         const response = await api.playTrack(t.id);
         if (response.success) {
           setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: t }));
-          if (t.id) await analytics.startListeningSession(t.id);
+          if (t.id) {
+            await analytics.startListeningSession(t.id);
+            setAnalyticsRefreshTrigger(prev => prev + 1);
+          }
         } else {
           setError(response.error || 'Failed to play track');
         }
@@ -147,7 +153,10 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         const response = await api.playTrack(t.id);
         if (response.success) {
           setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: t }));
-          if (t.id) await analytics.startListeningSession(t.id);
+          if (t.id) {
+            await analytics.startListeningSession(t.id);
+            setAnalyticsRefreshTrigger(prev => prev + 1);
+          }
         } else {
           setError(response.error || 'Failed to play track');
         }
@@ -156,6 +165,29 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       console.error('Failed to play next (random):', e);
     }
   }, [analytics]);
+
+  // Initialize reasonable volume on first load
+  useEffect(() => {
+    const initializeVolume = async () => {
+      try {
+        const state = await api.getPlaybackState();
+        if (state.success && state.data) {
+          const backendVolume = state.data.volume;
+          console.log('[VOLUME] Initial backend volume:', backendVolume);
+          
+          // If backend volume seems unreasonable (> 100 suggests it's in wrong scale), fix it
+          if (backendVolume > 100) {
+            console.log('[VOLUME] Backend volume seems wrong, setting to 80%');
+            await api.setVolume(80);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to initialize volume:', error);
+      }
+    };
+    
+    initializeVolume();
+  }, []); // Run once on mount
 
   // Poll for playback state updates
   useEffect(() => {
@@ -192,8 +224,23 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                 audioRef.current.pause();
               }
             
-              // Sync volume
-              audioRef.current.volume = state.volume / 100;
+              // Sync volume (backend returns 0-100, audio element expects 0-1)
+              // But only if user is not currently adjusting the volume slider
+              if (!isUserAdjustingVolume.current) {
+                console.log('[VOLUME] Backend returned volume:', state.volume);
+                // Ensure volume is always normalized to 0-1 range
+                const normalizedVolume = state.volume > 1 ? state.volume / 100 : state.volume;
+                const clampedVolume = Math.max(0, Math.min(1, normalizedVolume));
+                
+                audioRef.current.volume = clampedVolume;
+                
+                // Update local state to match backend (avoid fighting with the slider)
+                setPlaybackState(prev => ({ 
+                  ...prev, 
+                  volume: clampedVolume
+                }));
+                console.log('[VOLUME] Set local volume to:', clampedVolume);
+              }
             
               // Seek if needed (basic sync)
               if (Math.abs((audioRef.current.currentTime || 0) - (state.position || 0)) > 2) {
@@ -260,6 +307,8 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         // Start analytics session for the new track
         if (track?.id) {
           await analytics.startListeningSession(track.id);
+          // Trigger analytics refresh for Recently Played and Full History
+          setAnalyticsRefreshTrigger(prev => prev + 1);
         }
         
       } else {
@@ -359,16 +408,24 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
   // Rating functions
   const handleIncrementRating = useCallback(async (trackId: string) => {
+    console.log('[RATING] Incrementing rating for track:', trackId);
     try {
-      await analytics.incrementRating(trackId);
+      const result = await analytics.incrementRating(trackId);
+      console.log('[RATING] Increment result:', result);
+      // Trigger analytics refresh
+      setAnalyticsRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Failed to increment rating:', error);
     }
   }, [analytics]);
 
   const handleDecrementRating = useCallback(async (trackId: string) => {
+    console.log('[RATING] Decrementing rating for track:', trackId);
     try {
-      await analytics.decrementRating(trackId);
+      const result = await analytics.decrementRating(trackId);
+      console.log('[RATING] Decrement result:', result);
+      // Trigger analytics refresh
+      setAnalyticsRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Failed to decrement rating:', error);
     }
@@ -548,6 +605,53 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                 <MinusIcon className="w-5 h-5" />
               </Button>
             </div>
+            
+            {/* Volume Control */}
+            <div className="mt-3 px-4">
+              <div className="flex items-center gap-2">
+                <SpeakerWaveIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <Slider
+                  value={[Math.round(Math.max(0, Math.min(1, playbackState.volume)) * 100)]}
+                  onValueChange={async (value) => {
+                    const volumePercent = value[0];
+                    const newVolume = volumePercent / 100;
+                    
+                    // Mark that user is adjusting volume (prevent polling override)
+                    isUserAdjustingVolume.current = true;
+                    
+                    // Update local state immediately for responsive UI
+                    setPlaybackState(prev => ({ ...prev, volume: newVolume }));
+                    
+                    // Apply volume to audio element immediately
+                    if (audioRef.current) {
+                      audioRef.current.volume = newVolume;
+                    }
+                    
+                    // Send to backend API to persist the volume
+                    console.log('[VOLUME] Setting volume to:', volumePercent + '%');
+                    try {
+                      await api.setVolume(volumePercent);
+                      console.log('[VOLUME] Successfully set volume on backend');
+                    } catch (error) {
+                      console.error('Failed to update volume on backend:', error);
+                    }
+                    
+                    // After a longer delay, allow polling to resume
+                    setTimeout(() => {
+                      console.log('[VOLUME] Re-enabling volume polling');
+                      isUserAdjustingVolume.current = false;
+                    }, 3000); // 3 second delay to prevent snapping
+                  }}
+                  max={100}
+                  min={0}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-xs text-gray-400 w-12 text-right">
+                  {Math.round(Math.max(0, Math.min(1, playbackState.volume)) * 100)}%
+                </span>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -719,6 +823,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
             getTrackRating={analytics.getTrackRating}
             playbackState={playbackState}
             tracks={tracks}
+            refreshTrigger={analyticsRefreshTrigger}
           />
         )}
       </div>
