@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PlaybackService } from '../services/playback.service';
+import { SearchService } from '../services/search.service';
 import { PrismaClient } from '@prisma/client';
 import { Track } from '../types/api.types';
 import * as fs from 'fs';
@@ -10,9 +11,10 @@ import * as path from 'path';
  * Playback routes for the 9layer backend
  */
 export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
-  // Get the Prisma client and PlaybackService from the app
+  // Get the Prisma client and initialize services
   const prisma = fastify.prisma as PrismaClient;
   const playbackService = new PlaybackService(prisma);
+  const searchService = new SearchService(prisma);
 
   // Small helper to determine content-type by file extension
   function contentTypeFor(filePath: string): string {
@@ -38,6 +40,235 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
         return 'audio/mpeg';
     }
   }
+
+  /**
+   * Search across all content types
+   * GET /search/all
+   */
+  fastify.get('/search/all', {
+    schema: {
+      querystring: {
+        type: 'object',
+        properties: {
+          q: { type: 'string' },
+          artistLimit: { type: 'integer', minimum: 1, maximum: 50, default: 10 },
+          albumLimit: { type: 'integer', minimum: 1, maximum: 50, default: 15 },
+          trackLimit: { type: 'integer', minimum: 1, maximum: 100, default: 25 }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            results: {
+              type: 'object',
+              properties: {
+                artists: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      name: { type: 'string' },
+                      trackCount: { type: 'number' },
+                      albumCount: { type: 'number' }
+                    }
+                  }
+                },
+                albums: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      title: { type: 'string' },
+                      artistId: { type: 'string' },
+                      artistName: { type: 'string' },
+                      trackCount: { type: 'number' },
+                      albumType: { type: 'string' },
+                      coverUrl: { type: 'string' }
+                    }
+                  }
+                },
+                tracks: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      id: { type: 'string' },
+                      title: { type: 'string' },
+                      artist: { type: 'string' },
+                      album: { type: 'string' },
+                      artistId: { type: 'string' },
+                      albumId: { type: 'string' },
+                      duration: { type: 'number' },
+                      filePath: { type: 'string' },
+                      fileSize: { type: 'number' },
+                      youtubeId: { type: 'string' },
+                      likeability: { type: 'number' }
+                    }
+                  }
+                },
+                totalArtists: { type: 'number' },
+                totalAlbums: { type: 'number' },
+                totalTracks: { type: 'number' }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { q = '', artistLimit = 10, albumLimit = 15, trackLimit = 25 } = request.query as any;
+
+      const results = await searchService.searchAll({
+        query: q,
+        artistLimit,
+        albumLimit,
+        trackLimit
+      });
+
+      return reply.send({
+        success: true,
+        results
+      });
+    } catch (error) {
+      console.error('Search all error:', error);
+      return reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  });
+
+  /**
+   * Get tracks for a specific artist
+   * GET /search/artist/:artistId/tracks
+   */
+  fastify.get('/search/artist/:artistId/tracks', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['artistId'],
+        properties: {
+          artistId: { type: 'string' }
+        }
+      },
+      querystring: {
+        type: 'object',
+        properties: {
+          limit: { type: 'integer', minimum: 1, maximum: 100, default: 50 }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            tracks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  title: { type: 'string' },
+                  artist: { type: 'string' },
+                  album: { type: 'string' },
+                  artistId: { type: 'string' },
+                  albumId: { type: 'string' },
+                  duration: { type: 'number' },
+                  filePath: { type: 'string' },
+                  fileSize: { type: 'number' },
+                  youtubeId: { type: 'string' },
+                  likeability: { type: 'number' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { artistId } = request.params as { artistId: string };
+      const { limit = 50 } = request.query as any;
+
+      const tracks = await searchService.getArtistTracks(artistId, limit);
+
+      return reply.send({
+        success: true,
+        tracks
+      });
+    } catch (error) {
+      console.error('Get artist tracks error:', error);
+      return reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  });
+
+  /**
+   * Get tracks for a specific album
+   * GET /search/album/:albumId/tracks
+   */
+  fastify.get('/search/album/:albumId/tracks', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['albumId'],
+        properties: {
+          albumId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            tracks: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  title: { type: 'string' },
+                  artist: { type: 'string' },
+                  album: { type: 'string' },
+                  artistId: { type: 'string' },
+                  albumId: { type: 'string' },
+                  duration: { type: 'number' },
+                  filePath: { type: 'string' },
+                  fileSize: { type: 'number' },
+                  youtubeId: { type: 'string' },
+                  likeability: { type: 'number' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { albumId } = request.params as { albumId: string };
+
+      const tracks = await searchService.getAlbumTracks(albumId);
+
+      return reply.send({
+        success: true,
+        tracks
+      });
+    } catch (error) {
+      console.error('Get album tracks error:', error);
+      return reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  });
 
   /**
    * Get all tracks

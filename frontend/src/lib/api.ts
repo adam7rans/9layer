@@ -1,13 +1,13 @@
 // Determine backend base URL dynamically so mobile clients on LAN work.
 // Order of precedence:
 // 1) NEXT_PUBLIC_API_BASE (explicit override)
-// 2) Window hostname + :8000 at runtime
+// 2) Window hostname + :8001 at runtime
 // 3) 127.0.0.1 for SSR/fallback
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ??
   (typeof window !== 'undefined'
-    ? `${window.location.protocol}//${window.location.hostname}:8000`
-    : 'http://127.0.0.1:8000');
+    ? `${window.location.protocol}//${window.location.hostname}:8001`
+    : 'http://127.0.0.1:8001');
 
 export interface Track {
   id: string;
@@ -60,6 +60,49 @@ export interface DownloadProgressResponse {
   artist?: string;
   album?: string;
   youtubeId?: string;
+}
+
+// Search interfaces
+export interface SearchArtist {
+  id: string;
+  name: string;
+  trackCount: number;
+  albumCount: number;
+}
+
+export interface SearchAlbum {
+  id: string;
+  title: string;
+  artistId: string;
+  artistName: string;
+  trackCount: number;
+  albumType: string;
+  coverUrl?: string;
+}
+
+export interface SearchTrack {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  artistId: string;
+  albumId: string;
+  duration: number;
+  filePath: string;
+  fileSize: number;
+  youtubeId?: string;
+  likeability: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SearchResults {
+  artists: SearchArtist[];
+  albums: SearchAlbum[];
+  tracks: SearchTrack[];
+  totalArtists: number;
+  totalAlbums: number;
+  totalTracks: number;
 }
 
 export const api = {
@@ -296,6 +339,75 @@ export const api = {
   getDownloadProgress: async (jobId: string): Promise<DownloadProgressResponse> => {
     const response = await fetch(`${API_BASE}/download/progress/${jobId}`);
     return await response.json();
+  },
+
+  // Search functionality
+  searchAll: async (params: {
+    query?: string;
+    artistLimit?: number;
+    albumLimit?: number;
+    trackLimit?: number;
+  }): Promise<ApiResponse<SearchResults>> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.query) queryParams.set('q', params.query);
+      if (params.artistLimit) queryParams.set('artistLimit', params.artistLimit.toString());
+      if (params.albumLimit) queryParams.set('albumLimit', params.albumLimit.toString());
+      if (params.trackLimit) queryParams.set('trackLimit', params.trackLimit.toString());
+
+      const response = await fetch(`${API_BASE}/search/all?${queryParams}`);
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          data: data.results
+        };
+      }
+
+      return { success: false, error: data.error || 'Search failed' };
+    } catch (error) {
+      return { success: false, error: 'Search failed' };
+    }
+  },
+
+  getArtistTracks: async (artistId: string, limit?: number): Promise<ApiResponse<{tracks: SearchTrack[]}>> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (limit) queryParams.set('limit', limit.toString());
+
+      const response = await fetch(`${API_BASE}/search/artist/${artistId}/tracks?${queryParams}`);
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          data: { tracks: data.tracks }
+        };
+      }
+
+      return { success: false, error: data.error || 'Failed to get artist tracks' };
+    } catch (error) {
+      return { success: false, error: 'Failed to get artist tracks' };
+    }
+  },
+
+  getAlbumTracks: async (albumId: string): Promise<ApiResponse<{tracks: SearchTrack[]}>> => {
+    try {
+      const response = await fetch(`${API_BASE}/search/album/${albumId}/tracks`);
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          data: { tracks: data.tracks }
+        };
+      }
+
+      return { success: false, error: data.error || 'Failed to get album tracks' };
+    } catch (error) {
+      return { success: false, error: 'Failed to get album tracks' };
+    }
   },
 
   // Analytics endpoints

@@ -157,3 +157,55 @@ export interface PlaybackEvent {
   type: 'started' | 'paused' | 'stopped' | 'next' | 'previous' | 'queueUpdated';
   data: any;
 }
+
+// Search Service Types
+export interface SearchArtist {
+  id: string;
+  name: string;
+  trackCount: number;
+  albumCount: number;
+}
+
+export interface SearchAlbum {
+  id: string;
+  title: string;
+  artistId: string;
+  artistName: string;
+  trackCount: number;
+  albumType: string;
+  coverUrl?: string;
+}
+
+export interface SearchTrack {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  artistId: string;
+  albumId: string;
+  duration: number;
+  filePath: string;
+  fileSize: number;
+  youtubeId?: string;
+  likeability: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SearchResults {
+  artists: SearchArtist[];
+  albums: SearchAlbum[];
+  tracks: SearchTrack[];
+  totalArtists: number;
+  totalAlbums: number;
+  totalTracks: number;
+}
+
+export interface SearchOptions {
+  query?: string;
+  limit?: number;
+  offset?: number;
+  artistLimit?: number;
+  albumLimit?: number;
+  trackLimit?: number;
+}

@@ -5,6 +5,7 @@ import { api, Track, PlaybackState, API_BASE } from '@/lib/api';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useProgressSmoothing } from '@/hooks/useProgressSmoothing';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import SearchResults, { SearchArtist, SearchAlbum } from './SearchResults';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { 
@@ -149,6 +150,116 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     const response = await api.getRandomTrack();
     return response.success && response.data?.track ? response.data.track : null;
   }, [playbackMode, playbackState.queue, playbackState.currentTrack, getNextTrackSequential]);
+
+  // Handler for artist clicks - get artist tracks and play first one
+  const handleArtistClick = useCallback(async (artist: SearchArtist) => {
+    try {
+      const response = await fetch(`${API_BASE}/search/artist/${artist.id}/tracks?limit=50`);
+      const data = await response.json();
+
+      if (data.success && data.tracks && data.tracks.length > 0) {
+        // Convert search tracks to Track format and set as queue
+        const artistTracks: Track[] = data.tracks.map((track: any) => ({
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          artistId: track.artistId,
+          albumId: track.albumId,
+          duration: track.duration,
+          filePath: track.filePath,
+          fileSize: track.fileSize,
+          youtubeId: track.youtubeId,
+          likeability: track.likeability,
+          createdAt: new Date(track.createdAt),
+          updatedAt: new Date(track.updatedAt)
+        }));
+
+        // Switch to sequential mode for artist playback
+        setPlaybackMode('sequential');
+
+        // Set queue and play first track
+        setPlaybackState(prev => ({
+          ...prev,
+          queue: artistTracks,
+          currentTrack: artistTracks[0]
+        }));
+
+        // Start playing the first track
+        const playResponse = await api.playTrack(artistTracks[0].id);
+        if (playResponse.success) {
+          setPlaybackState(prev => ({
+            ...prev,
+            isPlaying: true
+          }));
+          if (artistTracks[0].id) {
+            await analytics.startListeningSession(artistTracks[0].id);
+            setAnalyticsRefreshTrigger(prev => prev + 1);
+          }
+        } else {
+          setError(playResponse.error || 'Failed to play artist tracks');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load artist tracks:', error);
+      setError('Failed to load artist tracks');
+    }
+  }, [analytics]);
+
+  // Handler for album clicks - get album tracks and play first one
+  const handleAlbumClick = useCallback(async (album: SearchAlbum) => {
+    try {
+      const response = await fetch(`${API_BASE}/search/album/${album.id}/tracks`);
+      const data = await response.json();
+
+      if (data.success && data.tracks && data.tracks.length > 0) {
+        // Convert search tracks to Track format and set as queue
+        const albumTracks: Track[] = data.tracks.map((track: any) => ({
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          album: track.album,
+          artistId: track.artistId,
+          albumId: track.albumId,
+          duration: track.duration,
+          filePath: track.filePath,
+          fileSize: track.fileSize,
+          youtubeId: track.youtubeId,
+          likeability: track.likeability,
+          createdAt: new Date(track.createdAt),
+          updatedAt: new Date(track.updatedAt)
+        }));
+
+        // Switch to sequential mode for album playback
+        setPlaybackMode('sequential');
+
+        // Set queue and play first track
+        setPlaybackState(prev => ({
+          ...prev,
+          queue: albumTracks,
+          currentTrack: albumTracks[0]
+        }));
+
+        // Start playing the first track
+        const playResponse = await api.playTrack(albumTracks[0].id);
+        if (playResponse.success) {
+          setPlaybackState(prev => ({
+            ...prev,
+            isPlaying: true
+          }));
+          if (albumTracks[0].id) {
+            await analytics.startListeningSession(albumTracks[0].id);
+            setAnalyticsRefreshTrigger(prev => prev + 1);
+          }
+        } else {
+          setError(playResponse.error || 'Failed to play album tracks');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load album tracks:', error);
+      setError('Failed to load album tracks');
+    }
+  }, [analytics]);
 
   // Load and play a random track on mount
   useEffect(() => {
@@ -531,11 +642,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     }
   }, [analytics]);
 
-  // Filter tracks based on search query
-  const filteredTracks = tracks.filter(track => 
-    track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    track.artist.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Note: Track filtering is now handled by the SearchResults component
 
   // Format time helper function
   const formatTime = (seconds: number) => {
@@ -988,77 +1095,26 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search tracks..."
+                  placeholder="Search artists, albums, and songs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
                 />
               </div>
             </div>
-            
-            {/* Track List */}
-            <div className="flex-1 overflow-y-auto">
-              {filteredTracks.length === 0 ? (
-                <div className="p-4 text-center text-gray-400">
-                  {searchQuery ? 'No tracks found' : 'No tracks available'}
-                </div>
-              ) : (
-                <div className="space-y-1 p-2">
-                  {filteredTracks.map((track) => (
-                    <div key={track.id} className="flex items-center gap-2 p-2 bg-gray-800 rounded hover:bg-gray-700 transition-colors">
-                      {/* Play Button */}
-                      <Button
-                        onClick={() => handlePlay(track.id)}
-                        className="h-8 w-8 p-0 flex-shrink-0"
-                        variant={playbackState.currentTrack?.id === track.id && playbackState.isPlaying ? "default" : "ghost"}
-                      >
-                        {playbackState.currentTrack?.id === track.id && playbackState.isPlaying ? (
-                          <PauseIcon className="w-4 h-4" />
-                        ) : (
-                          <PlayIcon className="w-4 h-4" />
-                        )}
-                      </Button>
-                      
-                      {/* Track Info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate text-sm">{track.title}</div>
-                        <div className="text-xs text-gray-400 truncate">{track.artist}</div>
-                      </div>
-                      
-                      {/* Rating Display */}
-                      <div className="flex items-center gap-1 text-xs text-gray-400">
-                        <span>{analytics.getTrackRating(track.id || '')}</span>
-                      </div>
-                      
-                      {/* Rating Buttons */}
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button
-                          onClick={() => track.id && handleDecrementRating(track.id)}
-                          className="h-6 w-6 p-0"
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <MinusIcon className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          onClick={() => track.id && handleIncrementRating(track.id)}
-                          className="h-6 w-6 p-0"
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <PlusIcon className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      
-                      {/* Duration */}
-                      <div className="text-xs text-gray-400 font-mono flex-shrink-0 w-12 text-right">
-                        {track.duration ? formatTime(track.duration) : '--:--'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+
+            {/* Enhanced Search Results */}
+            <SearchResults
+              query={searchQuery}
+              onPlayTrack={handlePlay}
+              onIncrementRating={handleIncrementRating}
+              onDecrementRating={handleDecrementRating}
+              getTrackRating={analytics.getTrackRating}
+              currentTrackId={playbackState.currentTrack?.id}
+              isPlaying={playbackState.isPlaying}
+              onArtistClick={handleArtistClick}
+              onAlbumClick={handleAlbumClick}
+            />
           </div>
         )}
 
