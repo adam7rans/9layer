@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api, Track, PlaybackState, API_BASE } from '@/lib/api';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { useProgressSmoothing } from '@/hooks/useProgressSmoothing';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -37,6 +38,22 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   const [currentView, setCurrentView] = useState<'library' | 'queue' | 'download' | 'analytics'>('library');
   const [downloadUrl, setDownloadUrl] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadJobs, setDownloadJobs] = useState<Array<{
+    jobId: string;
+    title?: string;
+    artist?: string;
+    album?: string;
+    youtubeId?: string;
+    status?: 'pending' | 'downloading' | 'processing' | 'completed' | 'failed';
+    progress?: number;
+  }>>([]);
+  const [completedAlbums, setCompletedAlbums] = useState<Array<{
+    albumName: string;
+    totalTracks: number;
+    completedAt: Date;
+    trackIds: string[]; // Specific track IDs for this album
+  }>>([]);
+  const [playbackMode, setPlaybackMode] = useState<'random' | 'sequential'>('random');
   const [error, setError] = useState<string | null>(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [showAutoplayHelp, setShowAutoplayHelp] = useState(false);
@@ -48,6 +65,90 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   
   // Analytics hook
   const analytics = useAnalytics();
+
+  // Progress smoothing hook for better UX during downloads
+  const smoothedDownloadJobs = useProgressSmoothing(downloadJobs);
+
+  // Play Album function - starts playing first track of album in sequential mode
+  const handlePlayAlbum = useCallback(async (album: { albumName: string; trackIds: string[] }) => {
+    try {
+      console.log('[FRONTEND] Playing album:', album.albumName);
+      console.log('[FRONTEND] Track IDs to find:', album.trackIds);
+
+      // Switch to sequential mode
+      setPlaybackMode('sequential');
+
+      // Get ALL tracks first
+      const response = await api.getTracks();
+      if (response.success && response.data) {
+        console.log('[FRONTEND] Total tracks in database:', response.data.tracks.length);
+
+        // Filter to only the specific tracks from this album completion
+        const albumTracks = response.data.tracks.filter(track =>
+          album.trackIds.includes(track.id)
+        );
+
+        console.log('[FRONTEND] Matching tracks found:', albumTracks.length);
+        console.log('[FRONTEND] Matching tracks:', albumTracks.map(t => ({id: t.id, title: t.title})));
+
+        if (albumTracks.length > 0) {
+          // Sort tracks by title for consistent order
+          const sortedTracks = albumTracks.sort((a, b) => a.title.localeCompare(b.title));
+
+          // Set queue to album tracks and play first one
+          setPlaybackState(prev => ({
+            ...prev,
+            queue: sortedTracks,
+            currentTrack: sortedTracks[0]
+          }));
+
+          // Start playing the first track
+          setError(null);
+          const playResponse = await api.playTrack(sortedTracks[0].id);
+          if (playResponse.success) {
+            setPlaybackState(prev => ({
+              ...prev,
+              isPlaying: true
+            }));
+            if (sortedTracks[0].id) {
+              await analytics.startListeningSession(sortedTracks[0].id);
+              setAnalyticsRefreshTrigger(prev => prev + 1);
+            }
+          } else {
+            setError(playResponse.error || 'Failed to play album');
+          }
+        } else {
+          setError('No tracks found for this album');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to play album:', error);
+      setError('Failed to play album');
+    }
+  }, [analytics]);
+
+  // Sequential next track function
+  const getNextTrackSequential = useCallback((currentTrack: Track, queue: Track[]) => {
+    if (!currentTrack || queue.length === 0) return null;
+
+    const currentIndex = queue.findIndex(track => track.id === currentTrack.id);
+    if (currentIndex === -1 || currentIndex === queue.length - 1) {
+      return queue[0]; // Loop back to start
+    }
+
+    return queue[currentIndex + 1];
+  }, []);
+
+  // Modified getRandomTrack to respect playback mode
+  const getNextTrack = useCallback(async () => {
+    if (playbackMode === 'sequential' && playbackState.queue.length > 0 && playbackState.currentTrack) {
+      return getNextTrackSequential(playbackState.currentTrack, playbackState.queue);
+    }
+
+    // Fall back to random
+    const response = await api.getRandomTrack();
+    return response.success && response.data?.track ? response.data.track : null;
+  }, [playbackMode, playbackState.queue, playbackState.currentTrack, getNextTrackSequential]);
 
   // Load and play a random track on mount
   useEffect(() => {
@@ -143,11 +244,10 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
   // Skip to next track
   const handleNext = useCallback(async () => {
-    // Next now plays a random track
+    // Next respects playback mode (random/sequential)
     try {
-      const res = await api.getRandomTrack();
-      if (res.success && res.data?.track) {
-        const t = res.data.track;
+      const t = await getNextTrack();
+      if (t) {
         setTracks([t]);
         setError(null);
         const response = await api.playTrack(t.id);
@@ -164,7 +264,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     } catch (e) {
       console.error('Failed to play next (random):', e);
     }
-  }, [analytics]);
+  }, [analytics, getNextTrack]);
 
   // Initialize reasonable volume on first load
   useEffect(() => {
@@ -446,25 +546,213 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
   const handleDownload = useCallback(async () => {
     if (!downloadUrl.trim()) return;
-    
+    const url = downloadUrl.trim();
     setIsDownloading(true);
     setError(null);
-    
+
+    const isPlaylistUrl = /[?&]list=|playlist/i.test(url);
+
     try {
-      await api.downloadAudio(downloadUrl.trim());
-      setDownloadUrl('');
-      // Refresh tracks after successful download
-      const response = await api.getTracks();
-      if (response.success && response.data) {
-        setTracks(response.data.tracks);
+      if (isPlaylistUrl) {
+        const res = await api.downloadPlaylist(url);
+        if (res.success && res.data) {
+          console.log('[DOWNLOAD] Playlist response:', res.data);
+          // Seed jobs from response
+          const jobs = res.data.jobs || [];
+          if (jobs.length > 0) {
+            setDownloadJobs(prev => [
+              ...jobs.map(j => ({ jobId: j.jobId, title: j.title, artist: j.artist, album: j.album, youtubeId: j.youtubeId, status: 'pending' as const, progress: 0 })),
+              ...prev,
+            ]);
+          } else if ((res.data as any).tracksQueued > 0) {
+            // No job IDs returned (unexpected). Show placeholder entry so user sees activity.
+            setDownloadJobs(prev => [
+              { jobId: `placeholder_${Date.now()}`, title: `Queued ${(res.data as any).tracksQueued} tracks…`, status: 'pending' as const, progress: 0 },
+              ...prev,
+            ]);
+          }
+        } else {
+          setError(res.error || 'Failed to start playlist download');
+        }
+      } else {
+        const res = await api.downloadAudio(url);
+        const jobId = res.data?.jobId;
+        if (res.success && typeof jobId === 'string') {
+          setDownloadJobs(prev => [
+            { jobId, title: 'Single video', status: 'pending' as const, progress: 0 },
+            ...prev,
+          ]);
+        } else if (!res.success) {
+          setError(res.error || 'Failed to start download');
+        }
       }
+
+      // Clear field but keep spinner while jobs are active
+      setDownloadUrl('');
     } catch (error) {
       console.error('Download failed:', error);
       setError('Download failed');
-    } finally {
-      setIsDownloading(false);
     }
   }, [downloadUrl]);
+
+  // Poll progress for active download jobs (disabled when SSE is connected)
+  useEffect(() => {
+    let cancelled = false;
+    if (currentView !== 'download') return;
+    // If SSE is connected, skip polling to reduce render pressure
+    if ((window as any).__sseDownloadConnected) return;
+    if (downloadJobs.length === 0) return;
+
+    const poll = async () => {
+      try {
+        const updates = await Promise.all(
+          downloadJobs.map(async job => {
+            // Stop polling completed/failed jobs
+            if (job.status === 'completed' || job.status === 'failed') return job;
+            try {
+              const progress = await api.getDownloadProgress(job.jobId);
+              if (progress && (progress as any).success) {
+                return {
+                  ...job,
+                  status: (progress as any).status,
+                  progress: (progress as any).progress,
+                  title: (progress as any).title || job.title,
+                  artist: (progress as any).artist || job.artist,
+                  album: (progress as any).album || job.album,
+                  youtubeId: (progress as any).youtubeId || job.youtubeId,
+                };
+              }
+              // If backend didn't return success, mark job as failed to halt polling noise
+              return { ...job, status: 'failed' as const };
+            } catch (e) {
+              // Mark job as failed on repeated errors to avoid endless polling
+              return { ...job, status: 'failed' as const };
+            }
+          })
+        );
+
+        if (!cancelled) {
+          setDownloadJobs(updates);
+
+          // If all jobs are done, refresh track list
+          const allDone = updates.every(j => j.status === 'completed' || j.status === 'failed');
+          if (allDone) {
+            try {
+              const response = await api.getTracks();
+              if (response.success && response.data) setTracks(response.data.tracks);
+            } catch {}
+          }
+        }
+      } catch (e) {
+        console.error('Download polling error', e);
+      }
+    };
+
+    const interval = setInterval(poll, 1000);
+    // kick initial poll quickly
+    poll();
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [currentView, downloadJobs.length]);
+
+  // Real-time download events via SSE
+  useEffect(() => {
+    if (currentView !== 'download') return;
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource(`${API_BASE}/download/stream`);
+      es.onopen = () => { (window as any).__sseDownloadConnected = true; };
+      const onDownload = (ev: MessageEvent) => {
+        try {
+          const evt = JSON.parse(ev.data || '{}');
+          const { type, jobId, data } = evt || {};
+
+          // Album completion is handled by separate SSE connection
+          if (type === 'album_completed') return;
+
+          if (!jobId) return;
+          setDownloadJobs(prev => {
+            const existing = prev.find(j => j.jobId === jobId);
+            const base = existing || { jobId, title: undefined as string | undefined, artist: undefined as string | undefined, album: undefined as string | undefined, youtubeId: undefined as string | undefined, status: 'pending' as const, progress: 0 };
+            const next = { ...base };
+            if (data) {
+              if (data.title) next.title = data.title;
+              if (data.artist) next.artist = data.artist;
+              if (data.album) next.album = data.album;
+              if (data.youtubeId) next.youtubeId = data.youtubeId;
+              if (typeof data.progress === 'number') next.progress = Math.max(0, Math.min(100, Math.round(data.progress)));
+            }
+            if (type === 'started') {
+              next.status = 'downloading';
+            } else if (type === 'progress') {
+              next.status = 'downloading';
+            } else if (type === 'completed') {
+              next.status = 'completed';
+              next.progress = 100;
+            } else if (type === 'failed') {
+              next.status = 'failed';
+            }
+            // Upsert and deduplicate by jobId to avoid duplicate keys
+            const updated = existing
+              ? prev.map(j => (j.jobId === jobId ? next : j))
+              : [next, ...prev];
+            const map = new Map<string, typeof next>();
+            for (const j of updated) {
+              map.set(j.jobId, map.has(j.jobId) ? { ...map.get(j.jobId)!, ...j } : j);
+            }
+            return Array.from(map.values());
+          });
+        } catch {}
+      };
+      es.addEventListener('download', onDownload as any);
+      es.onerror = () => { (window as any).__sseDownloadConnected = false; };
+    } catch (e) {
+      console.warn('SSE connection failed:', e);
+    }
+    return () => {
+      try { es?.close(); } catch {}
+      (window as any).__sseDownloadConnected = false;
+    };
+  }, [currentView]);
+
+  // Album completion events via SSE (always active regardless of view)
+  useEffect(() => {
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource(`${API_BASE}/download/stream`);
+      const onAlbumCompletion = (ev: MessageEvent) => {
+        try {
+          const evt = JSON.parse(ev.data || '{}');
+          const { type, data } = evt || {};
+
+          // Only handle album completion events
+          if (type === 'album_completed') {
+            console.log('[FRONTEND] Album completion received:', data);
+            console.log('[FRONTEND] Track IDs received:', data?.trackIds);
+            setCompletedAlbums(prev => [
+              {
+                albumName: data?.albumName || 'Unknown Album',
+                totalTracks: data?.totalTracks || 0,
+                completedAt: new Date(),
+                trackIds: data?.trackIds || []
+              },
+              ...prev
+            ]);
+          }
+        } catch (e) {
+          console.error('Album completion SSE error:', e);
+        }
+      };
+      es.addEventListener('download', onAlbumCompletion as any);
+    } catch (e) {
+      console.warn('Album completion SSE connection failed:', e);
+    }
+    return () => {
+      try { es?.close(); } catch {}
+    };
+  }, []); // No dependencies - always active
 
   return (
     <div className={cn("h-screen flex flex-col bg-gray-900 text-white", className)}>
@@ -811,6 +1099,87 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               >
                 {isDownloading ? 'Downloading...' : 'Download'}
               </Button>
+            </div>
+
+            {/* Completed Albums */}
+            {completedAlbums.length > 0 && (
+              <div className="mt-4 space-y-3 mb-4">
+                <h3 className="text-md font-semibold text-green-400">✅ Completed Albums</h3>
+                {completedAlbums.map((album, index) => (
+                  <div key={index} className="bg-green-900/20 rounded p-4 border border-green-700/50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-green-100">
+                          The "{album.albumName}" has been downloaded
+                        </div>
+                        <div className="text-xs text-green-300">
+                          {album.totalTracks} tracks • {album.completedAt.toLocaleTimeString()}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handlePlayAlbum(album)}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          size="sm"
+                        >
+                          Play Album
+                        </Button>
+                        <Button
+                          onClick={() => setCompletedAlbums(prev => prev.filter((_, i) => i !== index))}
+                          variant="ghost"
+                          size="sm"
+                          className="text-green-300 hover:text-white"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Progress Header & List */}
+            {smoothedDownloadJobs.length > 0 && (
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                <div className="text-xs text-gray-400 px-1">
+                  Showing {smoothedDownloadJobs.length} job{smoothedDownloadJobs.length === 1 ? '' : 's'}. {(window as any).__sseDownloadConnected ? 'Live (SSE)' : 'Polling every second'}.
+                </div>
+                {smoothedDownloadJobs.map(job => (
+                  <div key={job.jobId} className="bg-gray-800 rounded p-3 border border-gray-700">
+                    <div className="text-sm font-medium truncate">
+                      {job.title || 'Downloading'} {job.album ? `• ${job.album}` : ''}
+                    </div>
+                    <div className="text-xs text-gray-400 truncate mb-2">
+                      {job.artist || ''} {job.youtubeId ? `• ${job.youtubeId}` : ''}
+                    </div>
+                    <div className="w-full h-2 bg-gray-700 rounded overflow-hidden">
+                      <div
+                        className={`h-full ${job.status === 'failed' ? 'bg-red-500' : job.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'}`}
+                        style={{ width: `${Math.max(0, Math.min(100, job.progress ?? 0))}%` }}
+                      />
+                    </div>
+                    <div className="mt-1 text-xs text-gray-400">
+                      Status: {job.status ?? 'pending'} • {Math.round(job.progress ?? 0)}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Playback Mode Toggle */}
+            <div className="mt-6 pt-4 border-t border-gray-700">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-300">Playback Mode</span>
+                <Button
+                  onClick={() => setPlaybackMode(prev => prev === 'random' ? 'sequential' : 'random')}
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                >
+                  {playbackMode === 'random' ? '🔀 Random' : '▶️ Sequential'}
+                </Button>
+              </div>
             </div>
           </div>
         )}

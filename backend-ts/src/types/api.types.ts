@@ -6,10 +6,13 @@ export interface DownloadOptions {
   outputDir?: string;
   filenameTemplate?: string;
   extractMetadata?: boolean;
+  albumOverride?: string; // Force specific album name for playlist downloads
 }
 
 export interface DownloadResult {
   success: boolean;
+  // Unique job identifier for tracking progress of this download
+  jobId?: string;
   trackId?: string;
   filePath?: string;
   metadata?: TrackMetadata;
@@ -34,6 +37,13 @@ export interface DownloadJob {
   status: DownloadProgress['status'];
   createdAt: Date;
   updatedAt: Date;
+  // Optional metadata captured during processing for UI/monitoring
+  title?: string;
+  artist?: string;
+  album?: string;
+  youtubeId?: string;
+  // Simple numeric progress (0-100). Detailed bytes can be added later.
+  progress?: number;
 }
 
 export interface TrackMetadata {
@@ -138,7 +148,7 @@ export interface FileInfo {
 
 // Event Types
 export interface DownloadEvent {
-  type: 'started' | 'progress' | 'completed' | 'failed';
+  type: 'started' | 'progress' | 'completed' | 'failed' | 'album_completed';
   jobId: string;
   data: any;
 }

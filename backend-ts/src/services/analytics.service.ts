@@ -291,6 +291,134 @@ export class AnalyticsService {
       orderBy: { rating: 'desc' },
     });
   }
+
+  // Get detailed play history for a specific track with all sessions and playback segments
+  async getDetailedTrackPlayHistory(trackId: string, userId: string = 'default') {
+    const [track, sessions, segments] = await Promise.all([
+      // Get track info
+      prisma.track.findUnique({
+        where: { id: trackId },
+        include: {
+          artist: true,
+          album: true,
+        },
+      }),
+
+      // Get all listening sessions for this track
+      prisma.listeningSession.findMany({
+        where: { trackId, userId },
+        orderBy: { createdAt: 'desc' }, // Most recent first
+        include: {
+          segments: {
+            orderBy: { startPosition: 'asc' },
+          },
+        },
+      }),
+
+      // Get all playback segments for overview
+      prisma.playbackSegment.findMany({
+        where: { 
+          trackId,
+          listeningSession: {
+            userId
+          }
+        },
+        include: {
+          listeningSession: true,
+        },
+        orderBy: { startPosition: 'asc' },
+      }),
+    ]);
+
+    if (!track) {
+      throw new Error('Track not found');
+    }
+
+    // Calculate overall statistics
+    const totalPlays = sessions.length;
+    const totalTimeListened = sessions.reduce((sum, session) => sum + session.totalTime, 0);
+    const completedPlays = sessions.filter(s => s.completed).length;
+    const skippedPlays = sessions.filter(s => s.skipped).length;
+    const completionRate = totalPlays > 0 ? completedPlays / totalPlays : 0;
+    const skipRate = totalPlays > 0 ? skippedPlays / totalPlays : 0;
+    const averageListenTime = totalPlays > 0 ? totalTimeListened / totalPlays : 0;
+    const averageCompletionPercentage = totalPlays > 0 && track.duration > 0 ? 
+      (totalTimeListened / totalPlays) / track.duration : 0;
+
+    // Process each session to include detailed metrics
+    const detailedSessions = sessions.map(session => {
+      const sessionCompletionPercentage = track.duration > 0 ? session.totalTime / track.duration : 0;
+      const sessionCompletionMinSec = {
+        minutes: Math.floor(session.totalTime / 60),
+        seconds: Math.floor(session.totalTime % 60),
+      };
+
+      // Create timeline segments for this session
+      const timelineSegments = session.segments.map(segment => ({
+        startPosition: segment.startPosition,
+        endPosition: segment.endPosition,
+        duration: segment.duration,
+        startPercentage: track.duration > 0 ? (segment.startPosition / track.duration) * 100 : 0,
+        endPercentage: track.duration > 0 ? (segment.endPosition / track.duration) * 100 : 0,
+      }));
+
+      return {
+        id: session.id,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        totalTime: session.totalTime,
+        completed: session.completed,
+        skipped: session.skipped,
+        createdAt: session.createdAt,
+        completionPercentage: sessionCompletionPercentage,
+        completionMinSec: sessionCompletionMinSec,
+        timelineSegments,
+      };
+    });
+
+    // Calculate most played segments across all sessions
+    const segmentMap = new Map<string, {count: number, totalDuration: number}>();
+    segments.forEach(segment => {
+      const key = `${segment.startPosition}-${segment.endPosition}`;
+      const existing = segmentMap.get(key) || {count: 0, totalDuration: 0};
+      segmentMap.set(key, {
+        count: existing.count + 1,
+        totalDuration: existing.totalDuration + segment.duration,
+      });
+    });
+
+    const mostPlayedSegments = Array.from(segmentMap.entries())
+      .map(([range, data]) => {
+        const [start, end] = range.split('-').map(Number);
+        return {
+          range,
+          startPosition: start,
+          endPosition: end,
+          playCount: data.count,
+          totalDuration: data.totalDuration,
+          startPercentage: track.duration > 0 ? (start / track.duration) * 100 : 0,
+          endPercentage: track.duration > 0 ? (end / track.duration) * 100 : 0,
+        };
+      })
+      .sort((a, b) => b.totalDuration - a.totalDuration)
+      .slice(0, 10); // Top 10 most played segments
+
+    return {
+      track,
+      statistics: {
+        totalPlays,
+        totalTimeListened,
+        completedPlays,
+        skippedPlays,
+        completionRate,
+        skipRate,
+        averageListenTime,
+        averageCompletionPercentage,
+      },
+      sessions: detailedSessions,
+      mostPlayedSegments,
+    };
+  }
 }
 
 export const analyticsService = new AnalyticsService();

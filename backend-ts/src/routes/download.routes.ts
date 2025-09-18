@@ -34,6 +34,7 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
           type: 'object',
           properties: {
             success: { type: 'boolean' },
+            jobId: { type: 'string' },
             trackId: { type: 'string' },
             filePath: { type: 'string' },
             metadata: {
@@ -110,6 +111,49 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
   });
 
   /**
+   * Stream download events via Server-Sent Events (SSE)
+   * GET /download/stream
+   */
+  fastify.get('/download/stream', async (request: FastifyRequest, reply: FastifyReply) => {
+    // Set SSE headers
+    reply.raw.setHeader('Content-Type', 'text/event-stream');
+    reply.raw.setHeader('Cache-Control', 'no-cache, no-transform');
+    reply.raw.setHeader('Connection', 'keep-alive');
+    reply.raw.setHeader('Access-Control-Allow-Origin', '*');
+    // @ts-ignore
+    if ((reply.raw as any).flushHeaders) (reply.raw as any).flushHeaders();
+
+    const send = (event: any) => {
+      try {
+        reply.raw.write(`event: download\n`);
+        reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+      } catch {
+        cleanup();
+      }
+    };
+
+    const onEvent = (evt: any) => send(evt);
+
+    const cleanup = () => {
+      try { downloadService.off('download', onEvent as any); } catch {}
+      try { reply.raw.end(); } catch {}
+    };
+
+    // Subscribe to DownloadService "download" events
+    downloadService.on('download', onEvent as any);
+
+    // Heartbeat to keep connection alive
+    const heartbeat = setInterval(() => {
+      try { reply.raw.write(': keep-alive\n\n'); } catch { cleanup(); }
+    }, 25000);
+
+    request.raw.on('close', () => {
+      clearInterval(heartbeat);
+      cleanup();
+    });
+  });
+
+  /**
    * Download playlist from YouTube URL
    * POST /download/playlist
    */
@@ -130,7 +174,20 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
           properties: {
             success: { type: 'boolean' },
             message: { type: 'string' },
-            tracksQueued: { type: 'number' }
+            tracksQueued: { type: 'number' },
+            jobs: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  jobId: { type: 'string' },
+                  title: { type: 'string' },
+                  artist: { type: 'string' },
+                  album: { type: 'string' },
+                  youtubeId: { type: 'string' }
+                }
+              }
+            }
           }
         },
         400: {
@@ -185,18 +242,60 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
         });
       }
 
+      // Extract album name with better fallback logic
+      // Try: playlist metadata album -> playlist title -> playlist ID from URL -> fallback
+      let albumName = playlistInfo[0]?.album;
+
+      if (!albumName) {
+        // Try to extract playlist title from the URL using yt-dlp
+        try {
+          const playlistMetadata = await YTDlpWrapper.getPlaylistMetadata(url);
+          albumName = playlistMetadata?.title;
+        } catch (e) {
+          console.log('Could not extract playlist title:', e);
+        }
+      }
+
+      if (!albumName) {
+        // Extract playlist ID from URL as fallback
+        const playlistIdMatch = url.match(/[?&]list=([^&]+)/);
+        if (playlistIdMatch) {
+          albumName = `Playlist ${playlistIdMatch[1].slice(0, 8)}`;
+        }
+      }
+
+      // Final fallback
+      if (!albumName) {
+        albumName = 'Unknown Album';
+      }
+
+      console.log(`[PLAYLIST] Detected album name: "${albumName}" for ${playlistInfo.length} tracks`);
+
+      const playlistId = albumName; // Use album name as playlist ID
+      downloadService.startPlaylistTracking(playlistId, albumName, playlistInfo.length);
+
       // Queue downloads for each track in the playlist
       let queuedCount = 0;
+      const jobs: Array<{ jobId: string; title?: string; artist?: string; album?: string; youtubeId?: string }> = [];
       for (const track of playlistInfo) {
         try {
           const downloadOptions: DownloadOptions = {
             url: `https://www.youtube.com/watch?v=${track.youtubeId}`,
             quality,
             format,
-            extractMetadata: true
+            extractMetadata: true,
+            albumOverride: albumName // Ensure all tracks use the same album name for completion tracking
           };
 
-          await downloadService.downloadAudio(downloadOptions.url, downloadOptions);
+          const res = await downloadService.downloadAudio(downloadOptions.url, downloadOptions);
+          if (res.success && res.jobId) {
+            const job: { jobId: string; title?: string; artist?: string; album?: string; youtubeId?: string } = { jobId: res.jobId };
+            if (track.title) job.title = track.title;
+            if (track.artist) job.artist = track.artist;
+            if (track.album) job.album = track.album;
+            if (track.youtubeId) job.youtubeId = track.youtubeId;
+            jobs.push(job);
+          }
           queuedCount++;
         } catch (error) {
           console.error(`Failed to queue track ${track.youtubeId}:`, error);
@@ -206,7 +305,8 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.send({
         success: true,
         message: `Queued ${queuedCount} tracks for download`,
-        tracksQueued: queuedCount
+        tracksQueued: queuedCount,
+        jobs,
       });
     } catch (error) {
       console.error('Download playlist error:', error);
@@ -241,7 +341,11 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
             currentSpeed: { type: 'string' },
             eta: { type: 'string' },
             downloadedBytes: { type: 'number' },
-            totalBytes: { type: 'number' }
+            totalBytes: { type: 'number' },
+            title: { type: 'string' },
+            artist: { type: 'string' },
+            album: { type: 'string' },
+            youtubeId: { type: 'string' }
           }
         },
         404: {

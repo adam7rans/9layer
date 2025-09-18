@@ -40,6 +40,28 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+// Downloading
+export interface DownloadJobInfo {
+  jobId: string;
+  title?: string;
+  artist?: string;
+  album?: string;
+  youtubeId?: string;
+}
+
+export interface DownloadProgressResponse {
+  success: boolean;
+  jobId: string;
+  status: 'pending' | 'downloading' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  currentSpeed?: string;
+  eta?: string;
+  title?: string;
+  artist?: string;
+  album?: string;
+  youtubeId?: string;
+}
+
 export const api = {
   // Health check
   health: async (): Promise<ApiResponse<{status: string}>> => {
@@ -241,7 +263,7 @@ export const api = {
   },
   
   // Download functionality
-  downloadAudio: async (url: string): Promise<ApiResponse<{message: string}>> => {
+  downloadAudio: async (url: string): Promise<ApiResponse<{ jobId?: string; trackId?: string; filePath?: string }>> => {
     try {
       const response = await fetch(`${API_BASE}/download/audio`, {
         method: 'POST',
@@ -254,13 +276,26 @@ export const api = {
     }
   },
   
-  getDownloadStatus: async (): Promise<ApiResponse<{status: string, progress?: number}>> => {
+  downloadPlaylist: async (url: string): Promise<ApiResponse<{ tracksQueued: number; jobs: DownloadJobInfo[] }>> => {
     try {
-      const response = await fetch(`${API_BASE}/download/status`);
-      return await response.json();
+      const response = await fetch(`${API_BASE}/download/playlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await response.json();
+      if (data.success) {
+        return { success: true, data: { tracksQueued: data.tracksQueued, jobs: data.jobs || [] } };
+      }
+      return { success: false, error: data.error || 'Failed to start playlist download' };
     } catch (error) {
-      return { success: false, error: 'Failed to get download status' };
+      return { success: false, error: 'Failed to start playlist download' };
     }
+  },
+  
+  getDownloadProgress: async (jobId: string): Promise<DownloadProgressResponse> => {
+    const response = await fetch(`${API_BASE}/download/progress/${jobId}`);
+    return await response.json();
   },
 
   // Analytics endpoints
@@ -398,6 +433,19 @@ export const api = {
         return await response.json();
       } catch (error) {
         return { success: false, error: 'Failed to get rated tracks' };
+      }
+    },
+
+    // Get detailed play history for a specific track
+    getDetailedTrackHistory: async (trackId: string, userId?: string): Promise<ApiResponse<any>> => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (userId) queryParams.set('userId', userId);
+        
+        const response = await fetch(`${API_BASE}/analytics/track/${trackId}/detailed-history?${queryParams}`);
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to get detailed track history' };
       }
     }
   }

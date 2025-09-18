@@ -216,4 +216,25 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ success: false, error: 'Failed to get rated tracks' });
     }
   });
+
+  // Get detailed play history for a specific track
+  fastify.get('/analytics/track/:trackId/detailed-history', async (request, reply) => {
+    try {
+      const { trackId } = request.params as { trackId: string };
+      const { userId } = request.query as { userId?: string };
+
+      const detailedHistory = await analyticsService.getDetailedTrackPlayHistory(
+        trackId, 
+        userId || 'default'
+      );
+
+      return reply.send({ success: true, data: detailedHistory });
+    } catch (error) {
+      console.error('Error getting detailed track history:', error);
+      return reply.status(500).send({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to get detailed track history' 
+      });
+    }
+  });
 }

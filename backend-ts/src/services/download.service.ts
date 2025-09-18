@@ -16,6 +16,7 @@ export class DownloadService extends EventEmitter {
   private prisma: PrismaClient;
   private downloadQueue: Map<string, DownloadJob> = new Map();
   private activeDownloads: Map<string, AbortController> = new Map();
+  private playlistTracking: Map<string, { albumName: string; totalTracks: number; completedTracks: number; trackIds: string[]; }> = new Map();
   private maxConcurrentDownloads: number;
 
   constructor(prisma: PrismaClient) {
@@ -40,6 +41,7 @@ export class DownloadService extends EventEmitter {
         status: 'pending',
         createdAt: new Date(),
         updatedAt: new Date(),
+        progress: 0,
       };
 
       this.downloadQueue.set(jobId, job);
@@ -47,13 +49,15 @@ export class DownloadService extends EventEmitter {
 
       // Check if we can start download immediately
       if (this.activeDownloads.size < this.maxConcurrentDownloads) {
-        return await this.processDownload(jobId);
+        const result = await this.processDownload(jobId);
+        // Ensure jobId is present in response
+        return { ...result, jobId };
       } else {
         // Queue the download
         this.updateJobStatus(jobId, 'pending');
         return {
           success: true,
-          trackId: jobId, // Return job ID for tracking
+          jobId, // Return job ID for tracking
         };
       }
     } catch (error) {
@@ -68,16 +72,27 @@ export class DownloadService extends EventEmitter {
   /**
    * Get download progress
    */
-  async getDownloadProgress(jobId: string): Promise<DownloadProgress | null> {
+  async getDownloadProgress(jobId: string): Promise<(DownloadProgress & { title?: string; artist?: string; album?: string; youtubeId?: string }) | null> {
     const job = this.downloadQueue.get(jobId);
     if (!job) return null;
 
-    return {
+    const base: DownloadProgress = {
       jobId,
       status: job.status,
-      progress: 0, // Placeholder - would need process monitoring
-      currentSpeed: '0 KB/s', // Placeholder
-      eta: 'Unknown', // Placeholder
+      progress: job.progress ?? 0,
+      currentSpeed: '0 KB/s',
+      eta: 'Unknown',
+    };
+
+    const extra: { title?: string; artist?: string; album?: string; youtubeId?: string } = {};
+    if (job.title) extra.title = job.title;
+    if (job.artist) extra.artist = job.artist;
+    if (job.album) extra.album = job.album;
+    if (job.youtubeId) extra.youtubeId = job.youtubeId;
+
+    return {
+      ...base,
+      ...extra,
     };
   }
 
@@ -130,12 +145,31 @@ export class DownloadService extends EventEmitter {
 
     try {
       this.updateJobStatus(jobId, 'downloading');
+      job.progress = 0;
+      console.log(`[DOWNLOAD] Started job ${jobId} → ${job.url}`);
 
       // Get video information first
       const videoInfo = await YTDlpWrapper.getVideoInfo(job.url);
       if (!videoInfo) {
         throw new Error('Could not extract video information');
       }
+
+      // Capture basic metadata on the job for frontend display
+      if (videoInfo.title) job.title = videoInfo.title;
+      if (videoInfo.artist) job.artist = videoInfo.artist;
+      // Use album override if provided (for playlist downloads), otherwise use video metadata
+      job.album = job.options.albumOverride || videoInfo.album || 'Unknown Album';
+      if (videoInfo.youtubeId) job.youtubeId = videoInfo.youtubeId;
+      job.updatedAt = new Date();
+
+      // Emit a metadata-bearing started event so the UI has titles even before progress
+      this.emitDownloadEvent('started', jobId, {
+        title: job.title,
+        artist: job.artist,
+        album: job.album,
+        youtubeId: job.youtubeId,
+        progress: job.progress ?? 0,
+      });
 
       // Create output directory structure
       // If caller provided explicit outputDir/filenameTemplate, honor them.
@@ -159,21 +193,52 @@ export class DownloadService extends EventEmitter {
         filenameTemplate: filename,
       };
 
-      // Perform download
-      const result = await YTDlpWrapper.downloadAudio(job.url, downloadOptions);
+      // Perform download with progress
+      let lastLogged = 0;
+      let lastEmitAt = 0;
+      let lastEmitted = 0;
+      const result = await YTDlpWrapper.downloadAudioWithProgress(job.url, downloadOptions, {
+        onProgress: (percent) => {
+          // Keep one-decimal precision for smoother UI updates
+          const p = Math.max(0, Math.min(100, Math.round(percent * 10) / 10));
+          const now = Date.now();
+          const changedEnough = Math.abs(p - (lastEmitted || 0)) >= 0.1 || now - lastEmitAt >= 100 || p === 100;
+          if (changedEnough) {
+            job.progress = p;
+            job.updatedAt = new Date();
+            lastEmitAt = now;
+            lastEmitted = p;
+            // Always emit progress updates so SSE clients can render smoothly
+            this.emitDownloadEvent('progress', jobId, { progress: p, title: job.title, artist: job.artist, album: job.album, youtubeId: job.youtubeId });
+            // Keep console noise lower, but still show movement
+            if (p - lastLogged >= 1 || p === 100) {
+              console.log(`[DOWNLOAD] Job ${jobId} progress: ${p}%`);
+              lastLogged = Math.floor(p);
+            }
+          }
+        },
+        abortSignal: controller.signal as any,
+        durationSeconds: videoInfo.duration || 0,
+      });
 
       if (result.success && result.metadata) {
         // Save to database
         const track = await this.saveTrackToDatabase(result.metadata, outputPath);
         this.updateJobStatus(jobId, 'completed');
+        job.progress = 100;
+        console.log(`[DOWNLOAD] Completed job ${jobId} (${videoInfo.title})`);
 
         this.emitDownloadEvent('completed', jobId, {
           ...result,
           trackId: track.id,
         });
 
+        // Check if this completes a playlist/album
+        this.checkPlaylistCompletion(job, track.id);
+
         return {
           success: true,
+          jobId,
           trackId: track.id,
           filePath: outputPath,
           metadata: result.metadata,
@@ -183,10 +248,13 @@ export class DownloadService extends EventEmitter {
       }
     } catch (error) {
       this.updateJobStatus(jobId, 'failed');
+      job.progress = 0;
       this.emitDownloadEvent('failed', jobId, error);
+      console.error(`[DOWNLOAD] Failed job ${jobId}:`, error);
 
       return {
         success: false,
+        jobId,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     } finally {
@@ -285,6 +353,46 @@ export class DownloadService extends EventEmitter {
   }
 
   /**
+   * Start tracking playlist/album download
+   */
+  startPlaylistTracking(playlistId: string, albumName: string, totalTracks: number): void {
+    this.playlistTracking.set(playlistId, {
+      albumName,
+      totalTracks,
+      completedTracks: 0,
+      trackIds: []
+    });
+    console.log(`[PLAYLIST] Started tracking: ${albumName} (${totalTracks} tracks)`);
+  }
+
+  /**
+   * Update playlist completion and check if album is done
+   */
+  private checkPlaylistCompletion(job: DownloadJob, trackId: string): void {
+    if (!job.album) return;
+
+    const albumKey = job.album;
+    const tracking = this.playlistTracking.get(albumKey);
+    if (!tracking) return;
+
+    // Add this track ID to the completed tracks
+    tracking.trackIds.push(trackId);
+    tracking.completedTracks++;
+    console.log(`[PLAYLIST] ${albumKey}: ${tracking.completedTracks}/${tracking.totalTracks} tracks completed`);
+
+    if (tracking.completedTracks >= tracking.totalTracks) {
+      console.log(`[PLAYLIST] Album completed: ${tracking.albumName}`);
+      console.log(`[PLAYLIST] Track IDs being sent:`, tracking.trackIds);
+      this.emitDownloadEvent('album_completed', albumKey, {
+        albumName: tracking.albumName,
+        totalTracks: tracking.totalTracks,
+        trackIds: tracking.trackIds // Include the specific track IDs for this album
+      });
+      this.playlistTracking.delete(albumKey);
+    }
+  }
+
+  /**
    * Setup event handlers
    */
   private setupEventHandlers(): void {
@@ -295,6 +403,23 @@ export class DownloadService extends EventEmitter {
 
     this.on('download:failed', () => {
       this.processQueue();
+    });
+
+    // Log all download events for visibility in terminal
+    this.on('download', (event) => {
+      const { type, jobId, data } = event as any;
+      if (type === 'started') {
+        console.log(`[DOWNLOAD] Event: started job ${jobId}`);
+      } else if (type === 'progress') {
+        const p = typeof data?.progress === 'number' ? `${data.progress}%` : '';
+        console.log(`[DOWNLOAD] Event: progress job ${jobId} ${p}`);
+      } else if (type === 'completed') {
+        console.log(`[DOWNLOAD] Event: completed job ${jobId}`);
+      } else if (type === 'failed') {
+        console.error(`[DOWNLOAD] Event: failed job ${jobId}:`, data);
+      } else {
+        console.log(`[DOWNLOAD] Event: ${type} job ${jobId}`);
+      }
     });
   }
 
