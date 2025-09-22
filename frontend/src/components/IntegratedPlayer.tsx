@@ -8,12 +8,12 @@ import AnalyticsDashboard from './AnalyticsDashboard';
 import SearchResults, { SearchArtist, SearchAlbum } from './SearchResults';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { 
-  PlayIcon, 
-  PauseIcon, 
-  BackwardIcon, 
-  ForwardIcon, 
-  SpeakerWaveIcon, 
+import {
+  PlayIcon,
+  PauseIcon,
+  BackwardIcon,
+  ForwardIcon,
+  SpeakerWaveIcon,
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
   ListBulletIcon,

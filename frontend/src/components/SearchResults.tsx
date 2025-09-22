@@ -191,18 +191,18 @@ const SearchResults = ({
   }
 
   return (
-    <div className="flex-1 overflow-hidden">
+    <div className="flex-1 overflow-auto">
       {/* Three-column layout on desktop, stacked on mobile */}
-      <div className="h-full flex flex-col lg:flex-row gap-2 p-2">
+      <div className="h-full flex flex-col sm:flex-row gap-2 p-2">
 
         {/* Artists Column */}
         {results.artists.length > 0 && (
-          <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
+          <div className="flex-1 bg-gray-800 rounded-lg flex flex-col">
             <div className="p-3 border-b border-gray-700 flex items-center gap-2">
               <UserIcon className="w-4 h-4 text-blue-400" />
               <h3 className="font-medium text-blue-400">Artists ({results.totalArtists})</h3>
             </div>
-            <div className="overflow-y-auto max-h-48 lg:max-h-full">
+            <div className="">
               {results.artists.map((artist) => (
                 <div
                   key={artist.id}
@@ -221,12 +221,12 @@ const SearchResults = ({
 
         {/* Albums Column */}
         {results.albums.length > 0 && (
-          <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
+          <div className="flex-1 bg-gray-800 rounded-lg flex flex-col">
             <div className="p-3 border-b border-gray-700 flex items-center gap-2">
               <QueueListIcon className="w-4 h-4 text-green-400" />
               <h3 className="font-medium text-green-400">Albums ({results.totalAlbums})</h3>
             </div>
-            <div className="overflow-y-auto max-h-48 lg:max-h-full">
+            <div className="">
               {results.albums.map((album) => (
                 <div
                   key={album.id}
@@ -248,12 +248,12 @@ const SearchResults = ({
 
         {/* Tracks Column */}
         {results.tracks.length > 0 && (
-          <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden">
+          <div className="flex-1 bg-gray-800 rounded-lg flex flex-col">
             <div className="p-3 border-b border-gray-700 flex items-center gap-2">
               <MusicalNoteIcon className="w-4 h-4 text-purple-400" />
               <h3 className="font-medium text-purple-400">Songs ({results.totalTracks})</h3>
             </div>
-            <div className="overflow-y-auto max-h-48 lg:max-h-full">
+            <div className="">
               {results.tracks.map((track) => (
                 <div key={track.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-700 transition-colors">
                   <div className="flex items-center gap-2">
