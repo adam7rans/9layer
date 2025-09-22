@@ -55,6 +55,7 @@ async function registerPlugins() {
         'http://localhost:3002',
         'http://localhost:3003',
         'http://localhost:3004',
+        'http://localhost:3005',
       ];
       if (localhostAllow.includes(origin)) return cb(null, true);
 

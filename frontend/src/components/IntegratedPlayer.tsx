@@ -332,6 +332,8 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   const handlePrevious = useCallback(async () => {
     // Previous now plays a random track
     try {
+      // Set user interaction flag for mobile autoplay
+      setHasUserInteracted(true);
       const res = await api.getRandomTrack();
       if (res.success && res.data?.track) {
         const t = res.data.track;
@@ -357,6 +359,8 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   const handleNext = useCallback(async () => {
     // Next respects playback mode (random/sequential)
     try {
+      // Set user interaction flag for mobile autoplay
+      setHasUserInteracted(true);
       const t = await getNextTrack();
       if (t) {
         setTracks([t]);
@@ -561,12 +565,15 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
   const handleSeek = useCallback(async (event: React.MouseEvent<HTMLDivElement>) => {
     if (!playbackState.currentTrack?.duration) return;
-    
+
+    // Set user interaction flag for mobile autoplay
+    setHasUserInteracted(true);
+
     const rect = event.currentTarget.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
     const percentage = clickX / rect.width;
     const newPosition = percentage * playbackState.currentTrack.duration;
-    
+
     // Update local state immediately for responsiveness
     setPlaybackState(prev => ({ ...prev, position: newPosition }));
     
@@ -1010,7 +1017,10 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                   onValueChange={async (value) => {
                     const volumePercent = value[0];
                     const newVolume = volumePercent / 100;
-                    
+
+                    // Set user interaction flag for mobile autoplay
+                    setHasUserInteracted(true);
+
                     // Mark that user is adjusting volume (prevent polling override)
                     isUserAdjustingVolume.current = true;
                     
