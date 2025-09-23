@@ -5,8 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 9layer is a YouTube downloader and music player application with:
-- **Python CLI**: Terminal-based music player with keyboard controls
-- **FastAPI Backend**: RESTful API with WebSocket support for real-time playback
+- **TypeScript Backend**: Fastify RESTful API with WebSocket support for real-time playback
 - **Next.js Frontend**: Modern web UI with real-time player controls
 - **PostgreSQL Database**: Stores track metadata, albums, and user preferences
 
@@ -14,17 +13,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Backend Development
 ```bash
-# Start the FastAPI backend server
-cd backend && python main.py
+# Start the TypeScript backend server
+cd backend && npm run dev
 
 # Run backend tests
-cd backend && pytest
+cd backend && npm test
 
 # Check database connection
-cd backend && python test_db_connection.py
-
-# Run database migrations (if needed)
-cd backend && alembic upgrade head
+cd backend && npm run test:db
 ```
 
 ### Frontend Development
@@ -39,31 +35,20 @@ cd frontend && npm run build
 cd frontend && npm run lint
 ```
 
-### CLI Music Player
-```bash
-# Start the terminal music player
-python 9layer.py
-
-# Download YouTube content
-python downloader.py "https://youtube.com/watch?v=VIDEO_ID" --audio-only
-```
-
 ### Testing
 ```bash
-# Run all Python tests
-pytest
+# Run backend tests
+cd backend-ts && npm test
 
-# Run backend tests specifically
-cd backend && pytest --cov=app --cov-report=term-missing
+# Run frontend tests
+cd frontend && npm test
 ```
 
 ## Architecture Overview
 
 ### Multi-Component System
 - **Frontend** (`frontend/`): Next.js 15 + React 19 + TypeScript + Tailwind CSS
-- **Backend** (`backend/`): FastAPI + SQLAlchemy + PostgreSQL with WebSocket support
-- **CLI Player** (`musicplayer/`): Terminal-based player with keyboard controls
-- **Downloader** (`downloader.py`): YouTube content downloader using yt-dlp
+- **Backend** (`backend/`): Fastify + Prisma + PostgreSQL with WebSocket support
 
 ### Database Schema
 - **Artists**: Store artist information
@@ -72,17 +57,16 @@ cd backend && pytest --cov=app --cov-report=term-missing
 - **Relationships**: Albums contain tracks, tracks reference albums
 
 ### Key Technologies
-- **Backend**: FastAPI, SQLAlchemy, PostgreSQL, WebSocket, yt-dlp
+- **Backend**: Fastify, Prisma, PostgreSQL, WebSocket, yt-dlp
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS
-- **CLI**: Python with termios for raw terminal input
-- **Database**: PostgreSQL with SQLAlchemy ORM (migrated from SQLite)
+- **Database**: PostgreSQL with Prisma ORM
 
 ## Development Patterns
 
 ### Backend Structure
-- **Routers**: Organized by feature (download, playback, websocket)
+- **Routes**: Organized by feature (download, playback, websocket)
 - **Services**: Business logic separated from HTTP handlers
-- **Models**: SQLAlchemy models with relationships
+- **Models**: Prisma models with relationships
 - **WebSocket**: Real-time communication for player state updates
 
 ### Frontend Structure
@@ -92,26 +76,23 @@ cd backend && pytest --cov=app --cov-report=term-missing
 
 ### Database Configuration
 - Uses PostgreSQL (requires DATABASE_URL in .env)
-- Connection pooling via SQLAlchemy
-- Migration support via Alembic (when needed)
+- Connection pooling via Prisma
+- Migration support via Prisma migrate
 
 ## Important Files
 
 ### Configuration
 - `.env`: Database connection and app configuration
-- `backend/app/config.py`: Centralized configuration management
-- `backend/app/database.py`: Database connection setup
+- `backend/src/config/environment.ts`: Centralized configuration management
+- `backend/prisma/schema.prisma`: Database schema definition
 
 ### Core Components
-- `backend/main.py`: FastAPI application factory
-- `backend/app/models.py`: Database models (Artist, Album, Track)
-- `frontend/src/components/Player.tsx`: Main player component
-- `musicplayer/controller.py`: CLI player controller
+- `backend/src/app.ts`: Fastify application factory
+- `backend/prisma/schema.prisma`: Database models (Artist, Album, Track)
+- `frontend/src/components/IntegratedPlayer.tsx`: Main player component
 
 ### Entry Points
-- `python 9layer.py`: CLI music player (shim to musicplayer.cli)
-- `python downloader.py`: YouTube content downloader
-- `cd backend && python main.py`: Start FastAPI server
+- `cd backend && npm run dev`: Start Fastify server
 - `cd frontend && npm run dev`: Start Next.js development server
 
 ## Database Requirements
@@ -132,18 +113,18 @@ DATABASE_URL=postgresql://music_user:your_secure_password@localhost:5432/music_p
 
 ## Migration Notes
 
-The project was migrated from SQLite to PostgreSQL. Key changes:
-- Database connection via SQLAlchemy instead of direct SQLite
-- Improved concurrent access support
-- Better performance for complex queries
-- Backup SQLite databases are in `old_sqlite_backups/`
+The project has been migrated from Python/FastAPI to TypeScript/Fastify. Key changes:
+- Backend rewritten in TypeScript using Fastify framework
+- Database access via Prisma ORM instead of SQLAlchemy
+- Improved type safety and development experience
+- Better performance with TypeScript compilation
 
 ## Common Development Workflows
 
 ### Adding New Features
-1. Backend: Add routes in `backend/app/routers/`
+1. Backend: Add routes in `backend/src/routes/`
 2. Frontend: Create components in `frontend/src/components/`
-3. Database: Update models in `backend/app/models.py`
+3. Database: Update Prisma schema in `backend/prisma/schema.prisma`
 4. Tests: Add tests in respective `tests/` directories
 
 ### Working with WebSocket
@@ -152,9 +133,9 @@ The project was migrated from SQLite to PostgreSQL. Key changes:
 - Custom hook `usePlayerSocket` manages connection state
 
 ### Database Operations
-- Use SQLAlchemy ORM for database interactions
-- Session management via dependency injection
-- Relationship loading for complex queries
+- Use Prisma ORM for database interactions
+- Connection management via Prisma Client
+- Relationship loading via Prisma includes
 
 ## Development Workflow
 

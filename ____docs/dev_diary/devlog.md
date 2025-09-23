@@ -6,6 +6,30 @@ This file tracks development progress, features implemented, and issues resolved
 
 ```json
 {
+  "timestamp": "2025-09-23T10:28:00Z",
+  "description": "fix: resolve audio playback error and complete external drive migration",
+  "details": "Fixed audio playback issues after external drive migration by correcting database configuration and file paths. Updated DATABASE_URL from music_player to 9layer_dev database, migrated music library (16GB, 2,935 tracks) from local directory to external drive (/Volumes/2TB/coding tools/9layer/music), and verified all database file paths point to external drive. Renamed backend-ts directory to backend for simplicity and updated all configuration files. Cleaned up repository by removing old Python backend infrastructure, documentation files, and development debug scripts. Fixed VSCode Python extension issues by disabling Python features for this TypeScript-only workspace. Resolved 'failed to fetch random song' error by ensuring correct database connection and verified audio streaming endpoints work properly from external drive.",
+  "tags": ["backend", "database", "migration", "audio", "bugfix", "cleanup", "devops"],
+  "files_modified": [
+    ".env",
+    ".gitignore",
+    "CLAUDE.md",
+    "backend/.env",
+    ".vscode/settings.json",
+    "____docs/dev_diary/devlog.md"
+  ]
+},
+{
+  "timestamp": "2025-09-22T13:47:00Z",
+  "description": "fix: resolve search results layout and visibility issues",
+  "details": "Fixed critical search results display issues where individual sections had scroll bars and content was hidden. Corrected responsive breakpoint from lg: to sm: so three-column layout appears on desktop (>640px) while mobile shows stacked layout. Removed all overflow restrictions, max-height constraints, and scroll bars from Artists, Albums, and Songs sections, ensuring all search results are fully visible without scrolling within individual sections. Users can now see all artists, all albums, and all songs in their respective sections without truncation.",
+  "tags": ["frontend", "ui", "search", "responsive", "bugfix", "layout"],
+  "files_modified": [
+    "frontend/src/components/SearchResults.tsx",
+    "frontend/src/components/IntegratedPlayer.tsx"
+  ]
+},
+{
   "timestamp": "2025-09-18T08:10:00Z",
   "description": "feat: implement comprehensive real-time search with separate columns for artists, albums, and songs",
   "details": "Built complete enhanced search functionality with real-time filtering across entire database. Created new SearchService with separate methods for artists, albums, and tracks using Prisma ORM with case-insensitive search and proper relationships. Added three new API endpoints (/search/all, /search/artist/:id/tracks, /search/album/:id/tracks) with comprehensive schema validation. Implemented SearchResults React component with three-column responsive layout (Artists | Albums | Songs) featuring 300ms debounced search, click-to-play functionality, and proper error handling. Enhanced Library tab to replace simple track list with powerful search interface supporting artist/album playback that switches to sequential mode. Added search interfaces to TypeScript definitions and updated API client with search methods. Fixed API_BASE configuration to use correct port 8001 and resolved CORS/connectivity issues.",

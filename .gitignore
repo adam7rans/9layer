@@ -16,22 +16,22 @@ venv/
 backend/.venv/
 
 # Node.js dependencies
-backend-ts/node_modules/
+backend/node_modules/
 node_modules/
 
 # TypeScript compiled output
-backend-ts/dist/
+backend/dist/
 *.js.map
 
 # Environment files (sensitive)
 .env
-backend-ts/.env
+backend/.env
 *.env.local
 *.env.development
 *.env.production
 
 # Prisma
-backend-ts/prisma/migrations/
+backend/prisma/migrations/
 migration_lock.toml
 
 # IDE specific files
