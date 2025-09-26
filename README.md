@@ -56,6 +56,8 @@ PORT=8000
 CORS_ORIGIN=http://localhost:3004
 ```
 
+If you change the frontend port, remember to update `CORS_ORIGIN` so it matches.
+
 3) Prisma
 ```bash
 npx prisma generate
@@ -87,7 +89,7 @@ NEXT_PUBLIC_API_BASE=http://localhost:8000
 3) Run the app
 ```bash
 npm run dev
-# Open http://localhost:3004
+# By default opens at http://localhost:3000 (falls back to 3001/3002/... if busy)
 ```
 
 ## Adding Music (Required)
@@ -97,9 +99,9 @@ Options:
 1) Manual library entries (recommended for now)
    - Place audio files (mp3/webm/opus) on your filesystem.
    - Insert track metadata and absolute file paths into the DB using Prisma Studio:
-     ```bash
-     npx prisma studio
-     ```
+    ```bash
+    npx prisma studio
+    ```
    - Or write a small seed script to create `Artist`, `Album`, `Track` records.
 
 2) In-app YouTube downloader (experimental)
@@ -107,14 +109,19 @@ Options:
    - If you try it, ensure ffmpeg is installed. Expect bugs; contributions are welcome.
 
 ## Usage
-- Start backend on 8000 and frontend on 3004.
-- Open the app, use search to locate tracks, and click play.
-- Player supports previous/next, volume, and auto-advance after a user interaction (browser policy).
+- **Start servers together**
+  1. From the repository root, run `npm install -g .` once to link the command.
+  2. Afterwards run `9layer` to launch both servers. The backend binds to `http://localhost:8000`. The frontend will try `http://localhost:3000` first and automatically fall back to `3001`, `3002`, etc. if earlier ports are busy.
+  3. Stop both servers any time with `9layer end` (from any directory).
+- **Manual start (optional)**
+  - Start backend on 8000 and frontend on 3000 (or the next available open port) individually if you prefer.
+- **Play music**
+  - Open the app, use search to locate tracks, and click play.
+  - Player supports previous/next, volume, and auto-advance after a user interaction (browser policy).
 
 ## Troubleshooting
-- No sound / NotAllowedError: Interact with the page first (click/tap/keydown) before pressing Play due to browser autoplay rules.
 - "No supported source" errors: ensure your file paths are valid, files exist, and the backend returns correct `content-type` (e.g., `audio/mpeg`).
-- CORS: confirm `CORS_ORIGIN` matches `http://localhost:3004` and the frontend points to `http://localhost:8000`.
+- CORS: confirm `CORS_ORIGIN` matches whichever frontend URL you are using (e.g. `http://localhost:3000`) and the frontend points to `http://localhost:8000`.
 - Test file: open `frontend/public/audio-test.html` in a browser to confirm your browser can play basic audio.
 
 ## Project Structure (key parts)

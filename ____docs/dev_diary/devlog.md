@@ -6,6 +6,17 @@ This file tracks development progress, features implemented, and issues resolved
 
 ```json
 {
+  "timestamp": "2025-09-26T10:42:30Z",
+  "description": "chore: streamline dev environment launcher commands",
+  "details": "Created a repository-level CLI workflow so `9layer` launches both dev servers with automatic frontend port detection and added a companion `9layer end` subcommand that cleanly stops the Fastify and Next.js processes. Improved `start-dev.sh` with port auto-increment logic, PID cleanup, and symlink resolution. Updated the README usage docs to describe the new start/stop commands and clarified CORS configuration guidance.",
+  "tags": ["backend", "frontend", "setup", "tooling", "documentation"],
+  "files_modified": [
+    "start-dev.sh",
+    "README.md",
+    "package.json"
+  ]
+},
+{
   "timestamp": "2025-09-23T10:28:00Z",
   "description": "fix: resolve audio playback error and complete external drive migration",
   "details": "Fixed audio playback issues after external drive migration by correcting database configuration and file paths. Updated DATABASE_URL from music_player to 9layer_dev database, migrated music library (16GB, 2,935 tracks) from local directory to external drive (/Volumes/2TB/coding tools/9layer/music), and verified all database file paths point to external drive. Renamed backend-ts directory to backend for simplicity and updated all configuration files. Cleaned up repository by removing old Python backend infrastructure, documentation files, and development debug scripts. Fixed VSCode Python extension issues by disabling Python features for this TypeScript-only workspace. Resolved 'failed to fetch random song' error by ensuring correct database connection and verified audio streaming endpoints work properly from external drive.",
