@@ -5,6 +5,8 @@ export interface SearchArtist {
   name: string;
   trackCount: number;
   albumCount: number;
+  missingTrackCount: number;
+  hasMissingAudio: boolean;
 }
 
 export interface SearchAlbum {
@@ -15,6 +17,8 @@ export interface SearchAlbum {
   trackCount: number;
   albumType: string;
   coverUrl?: string;
+  missingTrackCount: number;
+  hasMissingAudio: boolean;
 }
 
 export interface SearchTrack {
@@ -25,9 +29,9 @@ export interface SearchTrack {
   artistId: string;
   albumId: string;
   duration: number;
-  filePath: string;
-  fileSize: number;
-  youtubeId?: string;
+  filePath: string | null;
+  fileSize: number | null;
+  youtubeId: string | null;
   likeability: number;
   createdAt: Date;
   updatedAt: Date;
@@ -80,11 +84,32 @@ export class SearchService {
       this.prisma.artist.count({ where })
     ]);
 
+    const artistIds = artists.map(artist => artist.id);
+    const missingByArtist = artistIds.length > 0
+      ? await this.prisma.track.groupBy({
+          by: ['artistId'],
+          where: {
+            artistId: { in: artistIds },
+            filePath: null
+          },
+          _count: {
+            _all: true
+          }
+        })
+      : [];
+
+    const missingArtistMap = new Map<string, number>();
+    for (const entry of missingByArtist) {
+      missingArtistMap.set(entry.artistId, entry._count._all);
+    }
+
     const searchArtists: SearchArtist[] = artists.map(artist => ({
       id: artist.id,
       name: artist.name,
       trackCount: artist._count.tracks,
-      albumCount: artist._count.albums
+      albumCount: artist._count.albums,
+      missingTrackCount: missingArtistMap.get(artist.id) ?? 0,
+      hasMissingAudio: (missingArtistMap.get(artist.id) ?? 0) > 0
     }));
 
     return { artists: searchArtists, total };
@@ -131,15 +156,44 @@ export class SearchService {
       this.prisma.album.count({ where })
     ]);
 
-    const searchAlbums: SearchAlbum[] = albums.map(album => ({
-      id: album.id,
-      title: album.title,
-      artistId: album.artistId,
-      artistName: album.artist.name,
-      trackCount: album._count.tracks,
-      albumType: album.albumType,
-      coverUrl: album.coverUrl || undefined
-    }));
+    const albumIds = albums.map(album => album.id);
+    const missingByAlbum = albumIds.length > 0
+      ? await this.prisma.track.groupBy({
+          by: ['albumId'],
+          where: {
+            albumId: { in: albumIds },
+            filePath: null
+          },
+          _count: {
+            _all: true
+          }
+        })
+      : [];
+
+    const missingAlbumMap = new Map<string, number>();
+    for (const entry of missingByAlbum) {
+      missingAlbumMap.set(entry.albumId, entry._count._all);
+    }
+
+    const searchAlbums: SearchAlbum[] = albums.map(album => {
+      const missingCount = missingAlbumMap.get(album.id) ?? 0;
+      const result: SearchAlbum = {
+        id: album.id,
+        title: album.title,
+        artistId: album.artistId,
+        artistName: album.artist.name,
+        trackCount: album._count.tracks,
+        albumType: album.albumType,
+        missingTrackCount: missingCount,
+        hasMissingAudio: missingCount > 0
+      };
+
+      if (album.coverUrl) {
+        result.coverUrl = album.coverUrl;
+      }
+
+      return result;
+    });
 
     return { albums: searchAlbums, total };
   }
@@ -190,21 +244,25 @@ export class SearchService {
       this.prisma.track.count({ where })
     ]);
 
-    const searchTracks: SearchTrack[] = tracks.map(track => ({
-      id: track.id,
-      title: track.title,
-      artist: track.artist?.name || 'Unknown Artist',
-      album: track.album?.title || 'Unknown Album',
-      artistId: track.artistId,
-      albumId: track.albumId,
-      duration: track.duration,
-      filePath: track.filePath,
-      fileSize: track.fileSize,
-      youtubeId: track.youtubeId || undefined,
-      likeability: track.likeability,
-      createdAt: track.createdAt,
-      updatedAt: track.updatedAt
-    }));
+    const searchTracks: SearchTrack[] = tracks.map(track => {
+      const result: SearchTrack = {
+        id: track.id,
+        title: track.title,
+        artist: track.artist?.name || 'Unknown Artist',
+        album: track.album?.title || 'Unknown Album',
+        artistId: track.artistId,
+        albumId: track.albumId,
+        duration: track.duration,
+        filePath: track.filePath,
+        fileSize: track.fileSize,
+        likeability: track.likeability,
+        createdAt: track.createdAt,
+        updatedAt: track.updatedAt,
+        youtubeId: track.youtubeId ?? null
+      };
+
+      return result;
+    });
 
     return { tracks: searchTracks, total };
   }
@@ -248,21 +306,25 @@ export class SearchService {
       take: limit
     });
 
-    return tracks.map(track => ({
-      id: track.id,
-      title: track.title,
-      artist: track.artist?.name || 'Unknown Artist',
-      album: track.album?.title || 'Unknown Album',
-      artistId: track.artistId,
-      albumId: track.albumId,
-      duration: track.duration,
-      filePath: track.filePath,
-      fileSize: track.fileSize,
-      youtubeId: track.youtubeId || undefined,
-      likeability: track.likeability,
-      createdAt: track.createdAt,
-      updatedAt: track.updatedAt
-    }));
+    return tracks.map(track => {
+      const result: SearchTrack = {
+        id: track.id,
+        title: track.title,
+        artist: track.artist?.name || 'Unknown Artist',
+        album: track.album?.title || 'Unknown Album',
+        artistId: track.artistId,
+        albumId: track.albumId,
+        duration: track.duration,
+        filePath: track.filePath,
+        fileSize: track.fileSize,
+        likeability: track.likeability,
+        createdAt: track.createdAt,
+        updatedAt: track.updatedAt,
+        youtubeId: track.youtubeId ?? null
+      };
+
+      return result;
+    });
   }
 
   async getAlbumTracks(albumId: string): Promise<SearchTrack[]> {
@@ -285,7 +347,7 @@ export class SearchService {
       duration: track.duration,
       filePath: track.filePath,
       fileSize: track.fileSize,
-      youtubeId: track.youtubeId || undefined,
+      youtubeId: track.youtubeId ?? null,
       likeability: track.likeability,
       createdAt: track.createdAt,
       updatedAt: track.updatedAt

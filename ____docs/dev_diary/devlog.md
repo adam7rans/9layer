@@ -2,6 +2,23 @@
 
 This file tracks development progress, features implemented, and issues resolved during the 9layer project development.
 
+## 2025-10-11 - Missing audio indicators for search results
+
+**Problem:** Artists and albums containing tracks without audio files were indistinguishable in the search UI, even when every track in an album was missing.
+
+**Root Cause:** The backend search service did not consistently populate nullable media fields or expose missing-track counts for aggregate entities, and the frontend only rendered missing-audio badges for individual tracks.
+
+**Solution:**
+1. Updated `backend/src/services/search.service.ts` to always return `youtubeId` as `string | null` and to include missing-audio metadata for albums and artists.
+2. Enhanced `frontend/src/components/SearchResults.tsx` to render red "All songs missing" styling for albums/artists with zero playable tracks and amber "Some tracks missing" styling when only a subset is unavailable.
+3. Added contextual badges and disabled states so users can immediately see availability before drilling into album or artist detail.
+
+**Files Modified:**
+- `/backend/src/services/search.service.ts`
+- `/frontend/src/components/SearchResults.tsx`
+
+**Outcome:** Search results now highlight missing audio at the artist and album levels, helping users prioritize remediation of fully missing albums while still flagging partially incomplete catalogs.
+
 ## 2025-10-11 - Downloader stall detection and retry flow
 
 **Problem:** Long-running YouTube downloads could stall silently, leaving the UI without guidance or recovery.

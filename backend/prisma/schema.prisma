@@ -42,8 +42,8 @@ model Track {
   artistId    String
   albumId     String
   duration    Int      @default(0)
-  filePath    String   @unique
-  fileSize    Int      @default(0)
+  filePath    String?  @unique
+  fileSize    Int?
   youtubeId   String?  @unique
   likeability Int      @default(0)
   createdAt   DateTime @default(now())

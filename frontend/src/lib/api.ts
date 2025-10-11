@@ -15,9 +15,9 @@ export interface Track {
   artist: string;
   album?: string;
   duration?: number;
-  filePath?: string;
-  file_path?: string; // Keep for backward compatibility
-  fileSize?: number;
+  filePath?: string | null;
+  file_path?: string | null; // Keep for backward compatibility
+  fileSize?: number | null;
   youtubeId?: string;
   likeability?: number;
   artistId?: string;

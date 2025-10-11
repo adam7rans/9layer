@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { API_BASE } from '@/lib/api';
 import {
@@ -18,6 +18,8 @@ export interface SearchArtist {
   name: string;
   trackCount: number;
   albumCount: number;
+  missingTrackCount?: number;
+  hasMissingAudio?: boolean;
 }
 
 export interface SearchAlbum {
@@ -28,6 +30,8 @@ export interface SearchAlbum {
   trackCount: number;
   albumType: string;
   coverUrl?: string;
+  missingTrackCount?: number;
+  hasMissingAudio?: boolean;
 }
 
 export interface SearchTrack {
@@ -38,8 +42,8 @@ export interface SearchTrack {
   artistId: string;
   albumId: string;
   duration: number;
-  filePath: string;
-  fileSize: number;
+  filePath: string | null;
+  fileSize: number | null;
   youtubeId?: string;
   likeability: number;
   createdAt: Date;
@@ -219,13 +223,41 @@ const SearchResults = ({
             {results.artists.length > 0 ? (
               results.artists.map((artist) => {
                 const isSelected = artist.id === selectedArtistId;
+                const totalTracks = artist.trackCount ?? 0;
+                const missingTracks = artist.missingTrackCount ?? 0;
+                const allMissing = totalTracks === 0 || missingTracks >= totalTracks || artist.hasMissingAudio === true;
+                const someMissing = !allMissing && missingTracks > 0;
+
+                const baseClasses = 'p-3 border-b last:border-b-0 transition-colors cursor-pointer';
+                let containerClasses = `${baseClasses} border-gray-700 ${isSelected ? 'bg-blue-900/40 border-blue-500' : 'hover:bg-gray-700'}`;
+                let titleClass = 'font-medium text-sm truncate';
+                let metaClass = 'text-xs text-gray-400';
+                let badge: ReactNode = null;
+
+                if (allMissing) {
+                  containerClasses = `${baseClasses} border-red-800/70 bg-red-950/50 text-red-200/80 ${isSelected ? 'ring-1 ring-red-500/70' : ''}`;
+                  titleClass += ' text-red-200';
+                  metaClass = 'text-xs text-red-300/80';
+                  badge = (
+                    <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-red-900/60 border border-red-700/80 text-red-200/90">
+                      All songs missing
+                    </span>
+                  );
+                } else if (someMissing) {
+                  containerClasses = `${baseClasses} border-amber-700/70 bg-amber-950/40 text-amber-200/90 ${isSelected ? 'ring-1 ring-amber-500/70' : ''}`;
+                  titleClass += ' text-amber-100';
+                  metaClass = 'text-xs text-amber-200/80';
+                  badge = (
+                    <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-amber-900/50 border border-amber-700/70 text-amber-100">
+                      Some tracks missing
+                    </span>
+                  );
+                }
+
                 return (
                   <div
                     key={artist.id}
-                    className={
-                      `p-3 border-b border-gray-700 last:border-b-0 transition-colors cursor-pointer ` +
-                      (isSelected ? 'bg-blue-900/40 border-blue-500' : 'hover:bg-gray-700')
-                    }
+                    className={containerClasses}
                     onClick={() => {
                       const nextArtistId = isSelected ? null : artist.id;
                       setSelectedArtistId(nextArtistId);
@@ -233,9 +265,15 @@ const SearchResults = ({
                       onArtistClick?.(artist);
                     }}
                   >
-                    <div className="font-medium text-sm">{artist.name}</div>
-                    <div className="text-xs text-gray-400">
+                    <div className="flex items-center gap-2">
+                      <div className={titleClass}>{artist.name}</div>
+                      {badge}
+                    </div>
+                    <div className={metaClass}>
                       {artist.trackCount} tracks • {artist.albumCount} albums
+                      {missingTracks > 0 && (
+                        <span className="ml-2">({missingTracks} missing)</span>
+                      )}
                     </div>
                   </div>
                 );
@@ -254,31 +292,63 @@ const SearchResults = ({
           </div>
           <div className="flex-1 overflow-auto min-h-0 scrollbar-thin-custom">
             {results.albums.length > 0 ? (
-              (selectedArtistId
-                ? results.albums.filter(album => album.artistId === selectedArtistId)
-                : results.albums
-              ).map((album) => {
+              (selectedArtistId ? results.albums.filter(album => album.artistId === selectedArtistId) : results.albums).map((album) => {
                 const isSelected = album.id === selectedAlbumId;
+                const totalTracks = album.trackCount ?? 0;
+                const missingTracks = album.missingTrackCount ?? 0;
+                const allMissing = totalTracks === 0 || missingTracks >= totalTracks || album.hasMissingAudio === true;
+                const someMissing = !allMissing && missingTracks > 0;
+
+                const baseClasses = 'p-3 border-b last:border-b-0 transition-colors cursor-pointer';
+                let containerClasses = `${baseClasses} border-gray-700 ${isSelected ? 'bg-green-900/40 border-green-500' : 'hover:bg-gray-700'}`;
+                let titleClass = 'font-medium text-sm truncate';
+                let metaClass = 'text-xs text-gray-400 truncate';
+                let typeClass = 'text-xs text-gray-500 truncate';
+                let badge: ReactNode = null;
+
+                if (allMissing) {
+                  containerClasses = `${baseClasses} border-red-800/70 bg-red-950/50 text-red-200/80 ${isSelected ? 'ring-1 ring-red-500/70' : ''}`;
+                  titleClass += ' text-red-200';
+                  metaClass = 'text-xs text-red-300/80 truncate';
+                  typeClass = 'text-xs text-red-400/70 truncate';
+                  badge = (
+                    <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-red-900/60 border border-red-700/80 text-red-200/90">
+                      All songs missing
+                    </span>
+                  );
+                } else if (someMissing) {
+                  containerClasses = `${baseClasses} border-amber-700/70 bg-amber-950/40 text-amber-200/90 ${isSelected ? 'ring-1 ring-amber-500/70' : ''}`;
+                  titleClass += ' text-amber-100';
+                  metaClass = 'text-xs text-amber-200/80 truncate';
+                  typeClass = 'text-xs text-amber-300/70 truncate';
+                  badge = (
+                    <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-amber-900/50 border border-amber-700/70 text-amber-100">
+                      Some tracks missing
+                    </span>
+                  );
+                }
+
                 return (
                   <div
                     key={album.id}
-                    className={
-                      `p-3 border-b border-gray-700 last:border-b-0 transition-colors cursor-pointer ` +
-                      (isSelected ? 'bg-green-900/40 border-green-500' : 'hover:bg-gray-700')
-                    }
+                    className={containerClasses}
                     onClick={() => {
                       const nextAlbumId = isSelected ? null : album.id;
                       setSelectedAlbumId(nextAlbumId);
                       onAlbumClick?.(album);
                     }}
                   >
-                    <div className="font-medium text-sm truncate">{album.title}</div>
-                    <div className="text-xs text-gray-400 truncate">
+                    <div className="flex items-center gap-2">
+                      <div className={titleClass}>{album.title}</div>
+                      {badge}
+                    </div>
+                    <div className={metaClass}>
                       {album.artistName} • {album.trackCount} tracks
+                      {missingTracks > 0 && (
+                        <span className="ml-2">({missingTracks} missing)</span>
+                      )}
                     </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {album.albumType}
-                    </div>
+                    <div className={typeClass}>{album.albumType}</div>
                   </div>
                 );
               })
@@ -299,61 +369,82 @@ const SearchResults = ({
               results.tracks
                 .filter(track => (selectedArtistId ? track.artistId === selectedArtistId : true))
                 .filter(track => (selectedAlbumId ? track.albumId === selectedAlbumId : true))
-                .map((track) => (
-                  <div key={track.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-700 transition-colors">
-                    <div className="flex items-center gap-2">
-                      {/* Play Button */}
-                      <Button
-                        onClick={() => onPlayTrack(track.id)}
-                        className="h-8 w-8 p-0 flex-shrink-0"
-                        variant={currentTrackId === track.id && isPlaying ? "default" : "ghost"}
-                      >
-                        {currentTrackId === track.id && isPlaying ? (
-                          <PauseIcon className="w-4 h-4" />
-                        ) : (
-                          <PlayIcon className="w-4 h-4" />
-                        )}
-                      </Button>
+                .map((track) => {
+                  const missingAudio = !track.filePath;
+                  const containerClasses = missingAudio
+                    ? 'p-3 border-b border-red-800/70 last:border-b-0 bg-red-950/60 text-red-200/80'
+                    : 'p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-700 transition-colors';
+                  const secondaryTextClass = missingAudio ? 'text-red-300/80' : 'text-gray-400';
+                  const tertiaryTextClass = missingAudio ? 'text-red-400/70' : 'text-gray-500';
+                  const durationTextClass = missingAudio ? 'text-red-300/70' : 'text-gray-400';
 
-                      {/* Track Info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium truncate text-sm">{track.title}</div>
-                        <div className="text-xs text-gray-400 truncate">{track.artist}</div>
-                        <div className="text-xs text-gray-500 truncate">{track.album}</div>
-                      </div>
-
-                      {/* Rating Display */}
-                      <div className="flex items-center gap-1 text-xs text-gray-400">
-                        <span>{getTrackRating(track.id)}</span>
-                      </div>
-
-                      {/* Rating Buttons */}
-                      <div className="flex items-center gap-1 flex-shrink-0">
+                  return (
+                    <div key={track.id} className={containerClasses}>
+                      <div className="flex items-center gap-2">
+                        {/* Play Button */}
                         <Button
-                          onClick={() => onDecrementRating(track.id)}
-                          className="h-6 w-6 p-0"
-                          variant="ghost"
-                          size="sm"
+                          onClick={() => onPlayTrack(track.id)}
+                          className="h-8 w-8 p-0 flex-shrink-0"
+                          variant={currentTrackId === track.id && isPlaying ? 'default' : 'ghost'}
+                          disabled={missingAudio}
+                          title={missingAudio ? 'Audio file missing' : undefined}
                         >
-                          <MinusIcon className="w-3 h-3" />
+                          {currentTrackId === track.id && isPlaying ? (
+                            <PauseIcon className="w-4 h-4" />
+                          ) : (
+                            <PlayIcon className="w-4 h-4" />
+                          )}
                         </Button>
-                        <Button
-                          onClick={() => onIncrementRating(track.id)}
-                          className="h-6 w-6 p-0"
-                          variant="ghost"
-                          size="sm"
-                        >
-                          <PlusIcon className="w-3 h-3" />
-                        </Button>
-                      </div>
 
-                      {/* Duration */}
-                      <div className="text-xs text-gray-400 font-mono flex-shrink-0 w-12 text-right">
-                        {track.duration ? formatTime(track.duration) : '--:--'}
+                        {/* Track Info */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className={`font-medium truncate text-sm ${missingAudio ? 'text-red-200' : ''}`}>
+                              {track.title}
+                            </div>
+                            {missingAudio && (
+                              <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-red-900/70 border border-red-700 text-red-200/90">
+                                Audio missing
+                              </span>
+                            )}
+                          </div>
+                          <div className={`text-xs truncate ${secondaryTextClass}`}>{track.artist}</div>
+                          <div className={`text-xs truncate ${tertiaryTextClass}`}>{track.album}</div>
+                        </div>
+
+                        {/* Rating Display */}
+                        <div className={`flex items-center gap-1 text-xs ${missingAudio ? 'text-red-300/70' : 'text-gray-400'}`}>
+                          <span>{getTrackRating(track.id)}</span>
+                        </div>
+
+                        {/* Rating Buttons */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button
+                            onClick={() => onDecrementRating(track.id)}
+                            className="h-6 w-6 p-0"
+                            variant="ghost"
+                            size="sm"
+                          >
+                            <MinusIcon className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            onClick={() => onIncrementRating(track.id)}
+                            className="h-6 w-6 p-0"
+                            variant="ghost"
+                            size="sm"
+                          >
+                            <PlusIcon className="w-3 h-3" />
+                          </Button>
+                        </div>
+
+                        {/* Duration */}
+                        <div className={`text-xs font-mono flex-shrink-0 w-12 text-right ${durationTextClass}`}>
+                          {track.duration ? formatTime(track.duration) : '--:--'}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
             ) : (
               <div className="p-3 text-xs text-gray-400">No songs found</div>
             )}
