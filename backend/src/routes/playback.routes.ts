@@ -51,9 +51,9 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
         type: 'object',
         properties: {
           q: { type: 'string' },
-          artistLimit: { type: 'integer', minimum: 1, maximum: 50, default: 10 },
-          albumLimit: { type: 'integer', minimum: 1, maximum: 50, default: 15 },
-          trackLimit: { type: 'integer', minimum: 1, maximum: 100, default: 25 }
+          artistLimit: { type: 'integer', minimum: 1, maximum: 500, default: 10 },
+          albumLimit: { type: 'integer', minimum: 1, maximum: 2000, default: 15 },
+          trackLimit: { type: 'integer', minimum: 1, maximum: 5000, default: 25 }
         }
       },
       response: {
@@ -538,6 +538,34 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { trackId } = request.params as { trackId: string };
+
+      const trackRecord = await prisma.track.findUnique({ where: { id: trackId } });
+
+      if (!trackRecord) {
+        return reply.code(404).send({
+          success: false,
+          error: 'Track not found'
+        });
+      }
+
+      if (!trackRecord.filePath) {
+        console.warn('[playback] Track has no file path', { trackId });
+        return reply.code(404).send({
+          success: false,
+          error: 'Track is missing its audio file path',
+          trackId
+        });
+      }
+
+      if (!fs.existsSync(trackRecord.filePath)) {
+        console.warn('[playback] File missing on disk', { trackId, filePath: trackRecord.filePath });
+        return reply.code(404).send({
+          success: false,
+          error: 'Audio file not found on disk',
+          trackId,
+          filePath: trackRecord.filePath
+        });
+      }
 
       await playbackService.startPlayback(trackId);
 

@@ -6,6 +6,7 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { useProgressSmoothing } from '@/hooks/useProgressSmoothing';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import SearchResults, { SearchArtist, SearchAlbum } from './SearchResults';
+import HeatmapTimeline from './HeatmapTimeline';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -47,12 +48,25 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     youtubeId?: string;
     status?: 'pending' | 'downloading' | 'processing' | 'completed' | 'failed';
     progress?: number;
+    errorMessage?: string;
+    errorCode?: string;
+    stallDetected?: boolean;
+    stallSecondsRemaining?: number;
+    retrying?: boolean;
+    playlistId?: string;
   }>>([]);
   const [completedAlbums, setCompletedAlbums] = useState<Array<{
     albumName: string;
     totalTracks: number;
     completedAt: Date;
     trackIds: string[]; // Specific track IDs for this album
+  }>>([]);
+  const [playlistSummaries, setPlaylistSummaries] = useState<Array<{
+    albumName: string;
+    totalTracks: number;
+    completedTracks: number;
+    failed: Array<{ title?: string; youtubeId?: string; reason?: string }>;
+    receivedAt: Date;
   }>>([]);
   const [playbackMode, setPlaybackMode] = useState<'random' | 'sequential'>('random');
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +83,73 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
   // Progress smoothing hook for better UX during downloads
   const smoothedDownloadJobs = useProgressSmoothing(downloadJobs);
+
+  const handleStopAndRetry = useCallback(async (jobId: string) => {
+    try {
+      setDownloadJobs(prev => prev.map(job => job.jobId === jobId ? { ...job, retrying: true } : job));
+      const result = await api.retryDownloadJob(jobId);
+      const newJobId = result.data?.jobId;
+      const retryError = result.error;
+
+      if (result.success && typeof newJobId === 'string' && newJobId.length > 0) {
+        setDownloadJobs(prev => {
+          const remaining = prev.filter(job => job.jobId !== jobId);
+          const oldJob = prev.find(job => job.jobId === jobId);
+          const cloned = oldJob ? {
+            ...oldJob,
+            jobId: newJobId,
+            status: 'pending' as const,
+            progress: 0,
+            errorMessage: undefined,
+            errorCode: undefined,
+            stallDetected: false,
+            stallSecondsRemaining: undefined,
+            retrying: false,
+          } : undefined;
+          return cloned ? [cloned, ...remaining] : remaining;
+        });
+      } else if (result.success && !newJobId) {
+        // Backend acknowledged but did not create new job. surface message.
+        setDownloadJobs(prev => prev.map(job => job.jobId === jobId ? { ...job, retrying: false, errorMessage: 'Retry acknowledged but no new job started.' } : job));
+      } else {
+        // Parse and improve error message
+        let errorMsg = retryError || 'Retry failed';
+        if (retryError?.includes('not found')) {
+          errorMsg = 'Job expired or not found. Download may be too old to retry.';
+        } else if (retryError?.includes('400')) {
+          errorMsg = 'Cannot retry this job. It may have already completed or been removed.';
+        }
+        setDownloadJobs(prev => prev.map(job => job.jobId === jobId ? { ...job, retrying: false, errorMessage: errorMsg } : job));
+      }
+    } catch (error) {
+      console.error('Retry download failed:', error);
+      const errorMsg = error instanceof Error && error.message.includes('not found')
+        ? 'Job expired. Try downloading again from the URL.'
+        : 'Retry failed. Check your connection and try again.';
+      setDownloadJobs(prev => prev.map(job => job.jobId === jobId ? { ...job, retrying: false, errorMessage: errorMsg } : job));
+    }
+  }, []);
+
+  const handleManualRetry = useCallback(async (jobId: string) => {
+    const job = downloadJobs.find(j => j.jobId === jobId);
+    await handleStopAndRetry(jobId);
+    if (job?.errorMessage) {
+      setError(job.errorMessage);
+    }
+  }, [downloadJobs, handleStopAndRetry]);
+
+  const handleCancel = useCallback(async (jobId: string) => {
+    try {
+      setDownloadJobs(prev => prev.map(job => job.jobId === jobId ? { ...job, retrying: false, status: 'failed', errorMessage: 'Download cancelled by user.' } : job));
+      const result = await api.cancelDownloadJob(jobId);
+      if (!result.success) {
+        setError(result.error || 'Failed to cancel download');
+      }
+    } catch (error) {
+      console.error('Cancel download failed:', error);
+      setError('Failed to cancel download');
+    }
+  }, [setDownloadJobs]);
 
   // Play Album function - starts playing first track of album in sequential mode
   const handlePlayAlbum = useCallback(async (album: { albumName: string; trackIds: string[] }) => {
@@ -388,11 +469,9 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         const state = await api.getPlaybackState();
         if (state.success && state.data) {
           const backendVolume = state.data.volume;
-          console.log('[VOLUME] Initial backend volume:', backendVolume);
           
           // If backend volume seems unreasonable (> 100 suggests it's in wrong scale), fix it
           if (backendVolume > 100) {
-            console.log('[VOLUME] Backend volume seems wrong, setting to 80%');
             await api.setVolume(80);
           }
         }
@@ -442,7 +521,6 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               // Sync volume (backend returns 0-100, audio element expects 0-1)
               // But only if user is not currently adjusting the volume slider
               if (!isUserAdjustingVolume.current) {
-                console.log('[VOLUME] Backend returned volume:', state.volume);
                 // Ensure volume is always normalized to 0-1 range
                 const normalizedVolume = state.volume > 1 ? state.volume / 100 : state.volume;
                 const clampedVolume = Math.max(0, Math.min(1, normalizedVolume));
@@ -454,8 +532,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                   ...prev, 
                   volume: clampedVolume
                 }));
-                console.log('[VOLUME] Set local volume to:', clampedVolume);
-              }
+                      }
             
               // Seek if needed (basic sync)
               if (Math.abs((audioRef.current.currentTime || 0) - (state.position || 0)) > 2) {
@@ -675,13 +752,32 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           const jobs = res.data.jobs || [];
           if (jobs.length > 0) {
             setDownloadJobs(prev => [
-              ...jobs.map(j => ({ jobId: j.jobId, title: j.title, artist: j.artist, album: j.album, youtubeId: j.youtubeId, status: 'pending' as const, progress: 0 })),
+              ...jobs.map(j => ({
+                jobId: j.jobId,
+                title: j.title,
+                artist: j.artist,
+                album: j.album,
+                youtubeId: j.youtubeId,
+                status: 'pending' as const,
+                progress: 0,
+                stallDetected: false,
+                stallSecondsRemaining: undefined,
+                retrying: false,
+              })),
               ...prev,
             ]);
           } else if ((res.data as any).tracksQueued > 0) {
             // No job IDs returned (unexpected). Show placeholder entry so user sees activity.
             setDownloadJobs(prev => [
-              { jobId: `placeholder_${Date.now()}`, title: `Queued ${(res.data as any).tracksQueued} tracks…`, status: 'pending' as const, progress: 0 },
+              {
+                jobId: `placeholder_${Date.now()}`,
+                title: `Queued ${(res.data as any).tracksQueued} tracks…`,
+                status: 'pending' as const,
+                progress: 0,
+                stallDetected: false,
+                stallSecondsRemaining: undefined,
+                retrying: false,
+              },
               ...prev,
             ]);
           }
@@ -693,7 +789,15 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         const jobId = res.data?.jobId;
         if (res.success && typeof jobId === 'string') {
           setDownloadJobs(prev => [
-            { jobId, title: 'Single video', status: 'pending' as const, progress: 0 },
+            {
+              jobId,
+              title: 'Single video',
+              status: 'pending' as const,
+              progress: 0,
+              stallDetected: false,
+              stallSecondsRemaining: undefined,
+              retrying: false,
+            },
             ...prev,
           ]);
         } else if (!res.success) {
@@ -734,6 +838,10 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                   artist: (progress as any).artist || job.artist,
                   album: (progress as any).album || job.album,
                   youtubeId: (progress as any).youtubeId || job.youtubeId,
+                  errorMessage: (progress as any).errorMessage ?? job.errorMessage,
+                  errorCode: (progress as any).errorCode ?? job.errorCode,
+                  stallDetected: (progress as any).stallDetected ?? job.stallDetected,
+                  stallSecondsRemaining: (progress as any).stallSecondsRemaining ?? job.stallSecondsRemaining,
                 };
               }
               // If backend didn't return success, mark job as failed to halt polling noise
@@ -786,10 +894,34 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           // Album completion is handled by separate SSE connection
           if (type === 'album_completed') return;
 
+          if (type === 'playlist_summary') {
+            setPlaylistSummaries(prev => [{
+              albumName: data?.albumName || 'Unknown Album',
+              totalTracks: data?.totalTracks ?? 0,
+              completedTracks: data?.completedTracks ?? 0,
+              failed: Array.isArray(data?.failed) ? data.failed : [],
+              receivedAt: new Date(),
+            }, ...prev.slice(0, 4)]);
+            return;
+          }
+
           if (!jobId) return;
           setDownloadJobs(prev => {
             const existing = prev.find(j => j.jobId === jobId);
-            const base = existing || { jobId, title: undefined as string | undefined, artist: undefined as string | undefined, album: undefined as string | undefined, youtubeId: undefined as string | undefined, status: 'pending' as const, progress: 0 };
+            const base = existing || {
+              jobId,
+              title: undefined as string | undefined,
+              artist: undefined as string | undefined,
+              album: undefined as string | undefined,
+              youtubeId: undefined as string | undefined,
+              errorMessage: undefined as string | undefined,
+              errorCode: undefined as string | undefined,
+              stallDetected: false,
+              stallSecondsRemaining: undefined,
+              retrying: false,
+              status: 'pending' as const,
+              progress: 0,
+            };
             const next = { ...base };
             if (data) {
               if (data.title) next.title = data.title;
@@ -797,16 +929,45 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               if (data.album) next.album = data.album;
               if (data.youtubeId) next.youtubeId = data.youtubeId;
               if (typeof data.progress === 'number') next.progress = Math.max(0, Math.min(100, Math.round(data.progress)));
+              if (data.message) next.errorMessage = data.message;
+              if (data.errorMessage) next.errorMessage = data.errorMessage;
+              if (data.errorCode) next.errorCode = data.errorCode;
+              if (data.code) next.errorCode = data.code;
+              if (typeof data.stallSecondsRemaining === 'number') next.stallSecondsRemaining = data.stallSecondsRemaining;
+              if (typeof data.stallDetected === 'boolean') next.stallDetected = data.stallDetected;
             }
             if (type === 'started') {
               next.status = 'downloading';
+              next.retrying = false;
             } else if (type === 'progress') {
               next.status = 'downloading';
             } else if (type === 'completed') {
               next.status = 'completed';
               next.progress = 100;
+              next.stallDetected = false;
+              next.stallSecondsRemaining = undefined;
             } else if (type === 'failed') {
               next.status = 'failed';
+              if (!next.errorMessage && typeof data === 'string') next.errorMessage = data;
+              next.stallDetected = false;
+              next.stallSecondsRemaining = undefined;
+              next.retrying = false;
+            } else if (type === 'stall_detected') {
+              next.status = 'downloading';
+              next.stallDetected = true;
+              next.stallSecondsRemaining = typeof data?.stallSecondsRemaining === 'number' ? data.stallSecondsRemaining : next.stallSecondsRemaining ?? 120;
+              if (data?.message) next.errorMessage = data.message;
+            } else if (type === 'stall_timeout') {
+              next.status = 'failed';
+              next.stallDetected = false;
+              next.stallSecondsRemaining = undefined;
+              next.retrying = false;
+              if (data?.message) next.errorMessage = data.message;
+            } else if (type === 'stall_cleared') {
+              next.stallDetected = false;
+              next.stallSecondsRemaining = undefined;
+            } else if (type === 'retry_started') {
+              next.retrying = true;
             }
             // Upsert and deduplicate by jobId to avoid duplicate keys
             const updated = existing
@@ -876,8 +1037,25 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         preload="none"
         playsInline
         onError={(e) => {
-          console.error('Audio element error:', e);
-          setError('Audio playback error');
+          const target = e.currentTarget as HTMLAudioElement;
+          const error = target.error;
+          const errorDetails = {
+            code: error?.code,
+            message: error?.message,
+            src: target.src,
+            networkState: target.networkState,
+            readyState: target.readyState
+          };
+          console.error('Audio element error:', errorDetails);
+          
+          // Provide user-friendly error message based on error code
+          let errorMsg = 'Audio playback error';
+          if (error?.code === 1) errorMsg = 'Audio loading aborted';
+          else if (error?.code === 2) errorMsg = 'Network error loading audio';
+          else if (error?.code === 3) errorMsg = 'Audio decoding failed';
+          else if (error?.code === 4) errorMsg = 'Audio format not supported';
+          
+          setError(errorMsg);
         }}
         className="hidden"
       />
@@ -885,47 +1063,37 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       {/* Main Player */}
       <div className="bg-gray-900">
         <div className="flex items-center justify-between p-3 gap-3">
-          {/* Audio Timeline Progress Bar */}
-          <div className="flex-1 px-4 bg-red-500/10 min-h-[20px] flex items-center">
-            <div className="flex items-center gap-3 w-full">
-              <span className="text-xs text-gray-400 min-w-[40px] text-center font-mono bg-green-500/20">
-                {formatTime(playbackState.position)}
-              </span>
-              <div 
-                className="flex-1 bg-gray-800 border border-gray-600 rounded-full cursor-pointer relative group min-w-[200px]"
-                style={{ height: '20px' }}
-                onClick={handleSeek}
-              >
-                {/* Background track - always visible */}
-                <div className="absolute inset-0 bg-gray-700 rounded-full" />
-                
-                {/* Progress fill */}
-                <div 
-                  className="absolute top-0 left-0 h-full bg-blue-500 rounded-full z-10"
-                  style={{ 
-                    width: playbackState.currentTrack?.duration 
-                      ? `${Math.max(2, (playbackState.position / playbackState.currentTrack.duration) * 100)}%`
-                      : '2%'
-                  }}
-                />
-                
-                {/* Playhead - always visible */}
-                <div 
-                  className="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white border-2 border-blue-500 rounded-full shadow-lg cursor-grab z-20"
-                  style={{ 
-                    left: playbackState.currentTrack?.duration 
-                      ? `calc(${(playbackState.position / playbackState.currentTrack.duration) * 100}% - 8px)`
-                      : '0px'
-                  }}
-                />
+          {/* Heatmap Timeline with Playback Hotspots */}
+          <div className="flex-1 px-4">
+            {playbackState.currentTrack ? (
+              <HeatmapTimeline
+                trackId={playbackState.currentTrack.id}
+                trackDuration={playbackState.currentTrack.duration || 0}
+                currentPosition={playbackState.position || 0}
+                height={50}
+                onSeek={async (position) => {
+                  // Update local state immediately for responsiveness
+                  setPlaybackState(prev => ({ ...prev, position }));
+                  
+                  // Also call backend seek API
+                  try {
+                    await api.seek(position);
+                  } catch (error) {
+                    console.error('Seek API call failed:', error);
+                  }
+                }}
+              />
+            ) : (
+              <div className="flex items-center gap-3 w-full">
+                <span className="text-xs text-gray-400 min-w-[40px] text-center font-mono">0:00</span>
+                <div className="flex-1 bg-gray-800 border border-gray-600 rounded" style={{ height: '50px' }}>
+                  <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                    No track loaded
+                  </div>
+                </div>
+                <span className="text-xs text-gray-400 min-w-[40px] text-center font-mono">0:00</span>
               </div>
-              <span className="text-xs text-gray-400 min-w-[40px] text-center font-mono bg-green-500/20">
-                {playbackState.currentTrack?.duration 
-                  ? formatTime(playbackState.currentTrack.duration)
-                  : '--:--'
-                }
-              </span>
-            </div>
+            )}
           </div>
 
         </div>
@@ -1033,17 +1201,14 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                     }
                     
                     // Send to backend API to persist the volume
-                    console.log('[VOLUME] Setting volume to:', volumePercent + '%');
                     try {
                       await api.setVolume(volumePercent);
-                      console.log('[VOLUME] Successfully set volume on backend');
                     } catch (error) {
                       console.error('Failed to update volume on backend:', error);
                     }
                     
                     // After a longer delay, allow polling to resume
                     setTimeout(() => {
-                      console.log('[VOLUME] Re-enabling volume polling');
                       isUserAdjustingVolume.current = false;
                     }, 3000); // 3 second delay to prevent snapping
                   }}
@@ -1167,6 +1332,54 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               </Button>
             </div>
 
+            {/* Playlist Summaries */}
+            {playlistSummaries.length > 0 && (
+              <div className="space-y-3 mb-4">
+                <h3 className="text-md font-semibold text-blue-300 flex items-center gap-2">
+                  Latest Playlist Summaries
+                </h3>
+                {playlistSummaries.map((summary, index) => (
+                  <div key={`${summary.albumName}-${index}`} className="bg-blue-900/30 border border-blue-700/40 rounded p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-blue-100">
+                          {summary.albumName}
+                        </div>
+                        <div className="text-xs text-blue-200/80">
+                          {summary.completedTracks}/{summary.totalTracks} tracks downloaded • {summary.receivedAt.toLocaleTimeString()}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-blue-200 hover:text-white"
+                        onClick={() => setPlaylistSummaries(prev => prev.filter((_, i) => i !== index))}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                    {summary.failed.length > 0 ? (
+                      <div className="text-xs text-red-200 space-y-1">
+                        <div className="font-medium text-red-300">Failed Tracks</div>
+                        {summary.failed.map((track, idx) => (
+                          <div key={`${track.youtubeId}-${idx}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                            <span>
+                              {track.title || 'Unknown Track'} {track.youtubeId ? `(${track.youtubeId})` : ''}
+                            </span>
+                            {track.reason && <span className="opacity-80">Reason: {track.reason}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-green-200">
+                        All tracks downloaded successfully.
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Completed Albums */}
             {completedAlbums.length > 0 && (
               <div className="mt-4 space-y-3 mb-4">
@@ -1225,8 +1438,57 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                         style={{ width: `${Math.max(0, Math.min(100, job.progress ?? 0))}%` }}
                       />
                     </div>
-                    <div className="mt-1 text-xs text-gray-400">
-                      Status: {job.status ?? 'pending'} • {Math.round(job.progress ?? 0)}%
+                    <div className="mt-1 text-xs text-gray-300 flex flex-col gap-1">
+                      <span>
+                        Status: {job.status ?? 'pending'} • {Math.round(job.progress ?? 0)}%
+                      </span>
+                      {job.stallDetected && job.status === 'downloading' && (
+                        <span className="text-amber-300">
+                          Detected stall – retrying in {Math.max(0, job.stallSecondsRemaining ?? 0)}s
+                        </span>
+                      )}
+                      {job.stallDetected && job.status === 'downloading' && job.stallSecondsRemaining !== undefined && job.stallSecondsRemaining <= 0 && (
+                        <span className="text-red-300">Download stalled. Auto retry imminent…</span>
+                      )}
+                      {job.retrying && <span className="text-blue-300">Retry in progress…</span>}
+                    </div>
+                    {job.errorMessage && (
+                      <div className="mt-1 text-xs text-red-300">
+                        {job.errorMessage}
+                        {job.errorCode ? ` (code: ${job.errorCode})` : ''}
+                      </div>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {job.stallDetected && job.status === 'downloading' && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={job.retrying}
+                            onClick={() => handleStopAndRetry(job.jobId)}
+                          >
+                            {job.retrying ? 'Stopping…' : 'Stop & Retry'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={job.retrying}
+                            onClick={() => handleCancel(job.jobId)}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      )}
+                      {job.status === 'failed' && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          disabled={job.retrying}
+                          onClick={() => handleStopAndRetry(job.jobId)}
+                        >
+                          {job.retrying ? 'Retrying…' : 'Retry download'}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

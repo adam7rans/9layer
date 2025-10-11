@@ -60,6 +60,22 @@ model Track {
   @@map("tracks")
 }
 
+model MissingTrack {
+  id        String            @id @default(cuid())
+  artist    String
+  title     String
+  youtubeId String?           @unique
+  album     String?           @default("Unknown Album")
+  status    MissingTrackStatus @default(PENDING)
+  reason    String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([artist, title, album])
+  @@index([status])
+  @@map("missing_tracks")
+}
+
 // User analytics models
 model ListeningSession {
   id          String   @id @default(cuid())
@@ -111,4 +127,11 @@ enum AlbumType {
   ALBUM
   PLAYLIST
   SINGLE
+}
+
+enum MissingTrackStatus {
+  PENDING
+  DOWNLOADED
+  MANUAL
+  IGNORED
 }

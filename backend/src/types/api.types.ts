@@ -7,6 +7,12 @@ export interface DownloadOptions {
   filenameTemplate?: string;
   extractMetadata?: boolean;
   albumOverride?: string; // Force specific album name for playlist downloads
+  extractorArgs?: string; // Internal: yt-dlp extractor override for restricted content
+  // Optional seed metadata supplied when we already know details (e.g. playlist entries)
+  title?: string;
+  artist?: string;
+  album?: string;
+  youtubeId?: string;
 }
 
 export interface DownloadResult {
@@ -17,6 +23,7 @@ export interface DownloadResult {
   filePath?: string;
   metadata?: TrackMetadata;
   error?: string;
+  errorCode?: string;
   duration?: number;
 }
 
@@ -28,6 +35,10 @@ export interface DownloadProgress {
   eta?: string;
   downloadedBytes?: number;
   totalBytes?: number;
+  errorMessage?: string;
+  errorCode?: string;
+  stallDetected?: boolean;
+  stallSecondsRemaining?: number;
 }
 
 export interface DownloadJob {
@@ -42,8 +53,13 @@ export interface DownloadJob {
   artist?: string;
   album?: string;
   youtubeId?: string;
+  errorMessage?: string;
+  errorCode?: string;
   // Simple numeric progress (0-100). Detailed bytes can be added later.
   progress?: number;
+  lastProgressAt?: Date;
+  stallDetectedAt?: Date;
+  stallDeadline?: Date;
 }
 
 export interface TrackMetadata {
@@ -148,7 +164,17 @@ export interface FileInfo {
 
 // Event Types
 export interface DownloadEvent {
-  type: 'started' | 'progress' | 'completed' | 'failed' | 'album_completed';
+  type:
+    | 'started'
+    | 'progress'
+    | 'completed'
+    | 'failed'
+    | 'album_completed'
+    | 'stall_detected'
+    | 'stall_cleared'
+    | 'stall_timeout'
+    | 'retry_started'
+    | 'playlist_summary';
   jobId: string;
   data: any;
 }

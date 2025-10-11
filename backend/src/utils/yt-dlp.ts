@@ -4,14 +4,114 @@ import { DownloadOptions, DownloadResult, TrackMetadata } from '../types/api.typ
 import { env } from '../config/environment';
 import FileUtils from './file-utils';
 
+type YtDlpExecOptions = Record<string, unknown>;
+
 export class YTDlpWrapper {
-  private static readonly DEFAULT_OPTIONS = {
+  private static readonly DEFAULT_OPTIONS: YtDlpExecOptions = {
     extractAudio: true,
     audioFormat: 'mp3',
     audioQuality: '192K',
     output: '%(title)s.%(ext)s',
     noPlaylist: true,
   };
+
+  private static readonly EXTRACTOR_VARIANTS: Array<string | undefined> = [
+    undefined,
+    'youtube:player_client=android_music',
+    'youtube:player_client=android',
+    'youtube:player_client=ios',
+  ];
+
+  private static buildExtractorVariantList(preferred?: string): Array<string | undefined> {
+    const ordered: Array<string | undefined> = [];
+    if (preferred && !ordered.includes(preferred)) {
+      ordered.push(preferred);
+    }
+    for (const candidate of YTDlpWrapper.EXTRACTOR_VARIANTS) {
+      if (candidate === preferred) continue;
+      if (!ordered.includes(candidate)) ordered.push(candidate);
+    }
+    return ordered;
+  }
+
+  private static collectErrorText(error: any): string {
+    const parts: string[] = [];
+    if (error?.message) parts.push(String(error.message));
+    if (error?.stderr) {
+      try { parts.push(error.stderr.toString()); } catch {}
+    }
+    if (error?.stdout) {
+      try { parts.push(error.stdout.toString()); } catch {}
+    }
+    return parts.join(' | ');
+  }
+
+  private static shouldRetryWithExtractor(error: any): boolean {
+    const text = YTDlpWrapper.collectErrorText(error).toLowerCase();
+    if (!text) return false;
+    return (
+      text.includes('requested format is not available') ||
+      text.includes('this video is not available') ||
+      text.includes('video unavailable') ||
+      text.includes('sign in to confirm your age') ||
+      text.includes('private video')
+    );
+  }
+
+  private static async callYtdlpJsonWithFallback(
+    url: string,
+    baseOptions: Record<string, any>,
+    preferredExtractor?: string
+  ): Promise<{ result: any; extractorArgs?: string }> {
+    const normalized = YTDlpWrapper.normalizeUrl(url);
+    const variants = YTDlpWrapper.buildExtractorVariantList(preferredExtractor);
+    let lastError: any;
+
+    for (const extractorArgs of variants) {
+      try {
+        const options: YtDlpExecOptions = extractorArgs
+          ? { ...baseOptions, extractorArgs }
+          : { ...baseOptions };
+        const result = await youtubedl(normalized, options);
+        const payload: { result: any; extractorArgs?: string } = { result };
+        if (extractorArgs) payload.extractorArgs = extractorArgs;
+        return payload;
+      } catch (error) {
+        lastError = error;
+        if (!YTDlpWrapper.shouldRetryWithExtractor(error)) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  static async getVideoInfoWithContext(
+    url: string,
+    preferredExtractor?: string
+  ): Promise<{ metadata: TrackMetadata | null; extractorArgs?: string }> {
+    try {
+      const { result, extractorArgs } = await YTDlpWrapper.callYtdlpJsonWithFallback(url, {
+        dumpJson: true,
+        skipDownload: true,
+        noWarnings: true,
+        ignoreErrors: true,
+        flatPlaylist: true,
+      }, preferredExtractor);
+      const payload: { metadata: TrackMetadata | null; extractorArgs?: string } = {
+        metadata: YTDlpWrapper.parseVideoInfo(result),
+      };
+      if (extractorArgs) payload.extractorArgs = extractorArgs;
+      return payload;
+    } catch (error) {
+      const e = error as any;
+      console.error('Failed to get video info:', e?.message || e);
+      if (e?.stdout) console.error('[yt-dlp stdout]', e.stdout.toString().slice(0, 2000));
+      if (e?.stderr) console.error('[yt-dlp stderr]', e.stderr.toString().slice(0, 2000));
+      return { metadata: null };
+    }
+  }
 
   /**
    * Download audio from YouTube URL
@@ -37,13 +137,14 @@ export class YTDlpWrapper {
         paths: { temp: tempDir },
         ...(options.quality && { audioQuality: YTDlpWrapper.mapQualityToNumber(options.quality) }),
         ...(options.format === 'video' && { extractAudio: false }),
+        ...(options.extractorArgs && { extractorArgs: options.extractorArgs }),
       };
 
       // Execute yt-dlp command
       await youtubedl(url, ytdlpOptions);
 
       // Extract metadata from the result
-      const metadata = await YTDlpWrapper.extractMetadata(url);
+      const metadata = await YTDlpWrapper.extractMetadata(url, options.extractorArgs);
 
       return {
         success: true,
@@ -119,6 +220,7 @@ export class YTDlpWrapper {
         // Ask ffmpeg (post-processor) to report detailed progress to stderr
         // so we can show smooth updates during conversion as well
         ppa: ['FFmpegExtractAudio:-progress pipe:2 -nostats'],
+        ...(options.extractorArgs && { extractorArgs: options.extractorArgs }),
       };
 
       const subprocess: any = (youtubedl as any).exec(url, ytdlpOptions, {
@@ -206,25 +308,9 @@ export class YTDlpWrapper {
   /**
    * Get video information without downloading
    */
-  static async getVideoInfo(url: string): Promise<TrackMetadata | null> {
-    try {
-      const normalized = YTDlpWrapper.normalizeUrl(url);
-      const result = await youtubedl(normalized, {
-        dumpJson: true,
-        skipDownload: true,
-        noWarnings: true,
-        ignoreErrors: true,
-        flatPlaylist: true,
-      });
-
-      return YTDlpWrapper.parseVideoInfo(result);
-    } catch (error) {
-      const e = error as any;
-      console.error('Failed to get video info:', e?.message || e);
-      if (e?.stdout) console.error('[yt-dlp stdout]', e.stdout.toString().slice(0, 2000));
-      if (e?.stderr) console.error('[yt-dlp stderr]', e.stderr.toString().slice(0, 2000));
-      return null;
-    }
+  static async getVideoInfo(url: string, preferredExtractor?: string): Promise<TrackMetadata | null> {
+    const { metadata } = await YTDlpWrapper.getVideoInfoWithContext(url, preferredExtractor);
+    return metadata;
   }
 
   /**
@@ -274,7 +360,7 @@ export class YTDlpWrapper {
         ignoreErrors: true,
         // fetch a large range of items if needed
         playlistItems: '1-10000',
-      });
+      } as YtDlpExecOptions);
 
       // yt-dlp may return:
       // - an object with entries[] for playlists
@@ -315,7 +401,7 @@ export class YTDlpWrapper {
         noWarnings: true,
         ignoreErrors: true,
         playlistItems: '1-10000',
-      });
+      } as YtDlpExecOptions);
       if (typeof flatResult === 'string') {
         const lines = flatResult.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
         const entries: any[] = [];
@@ -343,7 +429,7 @@ export class YTDlpWrapper {
           noWarnings: true,
           ignoreErrors: true,
           playlistItems: '1-10000',
-        });
+        } as YtDlpExecOptions);
         if (fallback && Array.isArray(fallback.entries)) {
           return fallback.entries.map(YTDlpWrapper.parseVideoInfo).filter(Boolean) as TrackMetadata[];
         }
@@ -385,7 +471,7 @@ export class YTDlpWrapper {
         playlistItems: '1',
         noWarnings: true,
         ignoreErrors: true,
-      });
+      } as YtDlpExecOptions);
 
       // Accept multiple shapes signifying a playlist
       if (typeof result === 'string') {
@@ -441,9 +527,9 @@ export class YTDlpWrapper {
     }
   }
 
-  private static async extractMetadata(url: string): Promise<TrackMetadata | undefined> {
+  private static async extractMetadata(url: string, preferredExtractor?: string): Promise<TrackMetadata | undefined> {
     try {
-      const info = await YTDlpWrapper.getVideoInfo(url);
+      const info = await YTDlpWrapper.getVideoInfo(url, preferredExtractor);
       return info || undefined;
     } catch {
       return undefined;

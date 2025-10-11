@@ -20,8 +20,6 @@ if [[ "${1:-}" == "end" ]]; then
   stop_servers
   exit 0
 fi
-BACKEND_PORT="${BACKEND_PORT:-8000}"
-
 port_in_use() {
   local port="$1"
   if command -v lsof >/dev/null 2>&1; then
@@ -32,24 +30,32 @@ port_in_use() {
   return 1
 }
 
-ensure_port_free() {
-  local port="$1"
-  local label="$2"
-  if port_in_use "$port"; then
-    printf "Error: port %s is already in use. Please stop the process using it or set %s_PORT.\n" "$port" "$label"
+# Auto-find available backend port
+if [ -z "${BACKEND_PORT+x}" ]; then
+  BACKEND_PORT=8000
+  while port_in_use "$BACKEND_PORT"; do
+    BACKEND_PORT=$((BACKEND_PORT + 1))
+  done
+else
+  # User explicitly set BACKEND_PORT, ensure it's free
+  if port_in_use "$BACKEND_PORT"; then
+    printf "Error: port %s is already in use. Please stop the process using it or choose a different BACKEND_PORT.\n" "$BACKEND_PORT"
     exit 1
   fi
-}
+fi
 
-ensure_port_free "$BACKEND_PORT" "BACKEND"
-
+# Auto-find available frontend port
 if [ -z "${FRONTEND_PORT+x}" ]; then
   FRONTEND_PORT=3000
   while port_in_use "$FRONTEND_PORT"; do
     FRONTEND_PORT=$((FRONTEND_PORT + 1))
   done
 else
-  ensure_port_free "$FRONTEND_PORT" "FRONTEND"
+  # User explicitly set FRONTEND_PORT, ensure it's free
+  if port_in_use "$FRONTEND_PORT"; then
+    printf "Error: port %s is already in use. Please stop the process using it or choose a different FRONTEND_PORT.\n" "$FRONTEND_PORT"
+    exit 1
+  fi
 fi
 
 BACKEND_URL="http://localhost:${BACKEND_PORT}"

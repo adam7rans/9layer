@@ -345,7 +345,11 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
             title: { type: 'string' },
             artist: { type: 'string' },
             album: { type: 'string' },
-            youtubeId: { type: 'string' }
+            youtubeId: { type: 'string' },
+            errorMessage: { type: 'string' },
+            errorCode: { type: 'string' },
+            stallDetected: { type: 'boolean' },
+            stallSecondsRemaining: { type: 'number' }
           }
         },
         404: {
@@ -379,6 +383,65 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.code(500).send({
         success: false,
         error: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  });
+
+  /**
+   * Retry download job
+   * POST /download/retry/:jobId
+   */
+  fastify.post('/download/retry/:jobId', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['jobId'],
+        properties: {
+          jobId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            jobId: { type: 'string' },
+            previousJobId: { type: 'string' },
+            error: { type: 'string' }
+          }
+        },
+        404: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { jobId } = request.params as { jobId: string };
+
+      const result = await downloadService.retryDownload(jobId);
+      if (!result.success && result.error?.includes('not found')) {
+        return reply.code(404).send({
+          success: false,
+          error: result.error,
+        });
+      }
+
+      return reply.send({
+        success: result.success,
+        jobId: result.jobId,
+        previousJobId: result.previousJobId,
+        error: result.error,
+      });
+    } catch (error) {
+      console.error('Retry download error:', error);
+      return reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error',
       });
     }
   });
