@@ -419,6 +419,73 @@ export class AnalyticsService {
       mostPlayedSegments,
     };
   }
+
+  // Generate heatmap data for track timeline (YouTube-style hotspot visualization)
+  async getTrackHeatmap(trackId: string, userId: string = 'default', bucketCount: number = 100) {
+    const [track, segments] = await Promise.all([
+      // Get track info
+      prisma.track.findUnique({
+        where: { id: trackId },
+        include: {
+          artist: true,
+          album: true,
+        },
+      }),
+
+      // Get all playback segments for this track
+      prisma.playbackSegment.findMany({
+        where: { 
+          trackId,
+          listeningSession: {
+            userId
+          }
+        },
+        orderBy: { startPosition: 'asc' },
+      }),
+    ]);
+
+    if (!track) {
+      throw new Error('Track not found');
+    }
+
+    const trackDuration = track.duration;
+    if (trackDuration === 0) {
+      return { trackId, trackDuration: 0, buckets: [] };
+    }
+
+    // Create buckets for the timeline
+    const bucketSize = trackDuration / bucketCount;
+    const buckets = new Array(bucketCount).fill(0);
+
+    // For each segment, increment the count for all buckets it overlaps
+    segments.forEach(segment => {
+      const startBucket = Math.floor(segment.startPosition / bucketSize);
+      const endBucket = Math.min(Math.floor(segment.endPosition / bucketSize), bucketCount - 1);
+
+      for (let i = startBucket; i <= endBucket; i++) {
+        buckets[i]++;
+      }
+    });
+
+    // Find max value for normalization
+    const maxPlays = Math.max(...buckets, 1); // Avoid division by zero
+
+    // Return normalized buckets with metadata
+    const heatmapData = buckets.map((count, index) => ({
+      startPosition: index * bucketSize,
+      endPosition: (index + 1) * bucketSize,
+      playCount: count,
+      intensity: count / maxPlays, // 0-1 normalized value
+    }));
+
+    return {
+      trackId,
+      trackDuration,
+      bucketSize,
+      maxPlays,
+      buckets: heatmapData,
+    };
+  }
 }
 
 export const analyticsService = new AnalyticsService();

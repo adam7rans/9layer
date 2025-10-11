@@ -17,6 +17,7 @@ export const useAnalytics = () => {
   const [trackRatings, setTrackRatings] = useState<Record<string, number>>({});
   const segmentStartRef = useRef<number>(0);
   const lastPositionRef = useRef<number>(0);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Start a new listening session
   const startListeningSession = useCallback(async (trackId: string) => {
@@ -46,6 +47,12 @@ export const useAnalytics = () => {
   const endListeningSession = useCallback(async (completed: boolean = false, skipped: boolean = false) => {
     if (!currentSession) return;
 
+    // Clear auto-save timer
+    if (autoSaveTimerRef.current) {
+      clearInterval(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+
     try {
       // Calculate total listening time from segments
       const totalTime = currentSession.segments.reduce((sum, segment) => sum + segment.duration, 0);
@@ -72,14 +79,17 @@ export const useAnalytics = () => {
     const duration = endPosition - startPosition;
     const segment = { startPosition, endPosition, duration };
 
+    console.log('[ANALYTICS] Saving segment:', { startPosition, endPosition, duration });
+
     try {
-      await api.analytics.addSegment({
+      const response = await api.analytics.addSegment({
         trackId: currentSession.trackId,
         sessionId: currentSession.id,
         startPosition,
         endPosition,
         duration
       });
+      console.log('[ANALYTICS] Segment saved successfully:', response);
 
       // Update local session
       setCurrentSession(prev => prev ? {
@@ -87,7 +97,7 @@ export const useAnalytics = () => {
         segments: [...prev.segments, segment]
       } : null);
     } catch (error) {
-      console.error('Failed to track segment:', error);
+      console.error('[ANALYTICS] Failed to track segment:', error);
     }
   }, [currentSession]);
 
@@ -112,6 +122,14 @@ export const useAnalytics = () => {
 
   // Handle when playback pauses (end current segment)
   const handlePause = useCallback(() => {
+    console.log('[ANALYTICS] Pause detected, saving segment');
+    
+    // Clear auto-save timer
+    if (autoSaveTimerRef.current) {
+      clearInterval(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+    
     if (!currentSession || lastPositionRef.current <= segmentStartRef.current) return;
 
     trackSegment(segmentStartRef.current, lastPositionRef.current);
@@ -120,9 +138,23 @@ export const useAnalytics = () => {
 
   // Handle when playback resumes (start new segment)
   const handlePlay = useCallback(() => {
+    console.log('[ANALYTICS] Play detected, starting new segment at', lastPositionRef.current);
     if (!currentSession) return;
     segmentStartRef.current = lastPositionRef.current;
-  }, [currentSession]);
+    
+    // Auto-save segments every 5 seconds during continuous playback
+    if (autoSaveTimerRef.current) {
+      clearInterval(autoSaveTimerRef.current);
+    }
+    
+    autoSaveTimerRef.current = setInterval(() => {
+      if (lastPositionRef.current > segmentStartRef.current + 1) { // At least 1 second played
+        console.log('[ANALYTICS] Auto-saving segment (5s interval)');
+        trackSegment(segmentStartRef.current, lastPositionRef.current);
+        segmentStartRef.current = lastPositionRef.current;
+      }
+    }, 5000); // Every 5 seconds
+  }, [currentSession, trackSegment]);
 
   // Handle track completion
   const handleTrackEnd = useCallback(() => {

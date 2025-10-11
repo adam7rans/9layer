@@ -47,6 +47,8 @@ export interface DownloadJobInfo {
   artist?: string;
   album?: string;
   youtubeId?: string;
+  errorMessage?: string;
+  errorCode?: string;
 }
 
 export interface DownloadProgressResponse {
@@ -60,6 +62,10 @@ export interface DownloadProgressResponse {
   artist?: string;
   album?: string;
   youtubeId?: string;
+  errorMessage?: string;
+  errorCode?: string;
+  stallDetected?: boolean;
+  stallSecondsRemaining?: number;
 }
 
 // Search interfaces
@@ -113,6 +119,60 @@ export const api = {
       return await response.json();
     } catch (error) {
       return { success: false, error: 'Failed to connect to backend' };
+    }
+  },
+
+  retryDownloadJob: async (jobId: string): Promise<ApiResponse<{ jobId?: string; previousJobId: string }>> => {
+    try {
+      const response = await fetch(`${API_BASE}/download/retry/${jobId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const raw = await response.json();
+
+      if (raw.success) {
+        return {
+          success: true,
+          data: {
+            jobId: raw.jobId,
+            previousJobId: raw.previousJobId,
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: raw.error || 'Retry failed',
+        data: raw.previousJobId ? { previousJobId: raw.previousJobId } : undefined,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Retry failed',
+      };
+    }
+  },
+
+  cancelDownloadJob: async (jobId: string): Promise<ApiResponse<undefined>> => {
+    try {
+      const response = await fetch(`${API_BASE}/download/progress/${jobId}`, {
+        method: 'DELETE',
+      });
+      const raw = await response.json();
+
+      if (raw.success) {
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        error: raw.error || 'Cancel failed',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Cancel failed',
+      };
     }
   },
 
@@ -559,6 +619,22 @@ export const api = {
       } catch (error) {
         return { success: false, error: 'Failed to get detailed track history' };
       }
-    }
-  }
+    },
+
+    // Get heatmap data for track timeline (YouTube-style hotspot visualization)
+    getTrackHeatmap: async (trackId: string, userId?: string, bucketCount?: number): Promise<ApiResponse<any>> => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (userId) queryParams.set('userId', userId);
+        if (bucketCount) queryParams.set('bucketCount', bucketCount.toString());
+        
+        const response = await fetch(`${API_BASE}/analytics/track/${trackId}/heatmap?${queryParams}`);
+        return await response.json();
+      } catch (error) {
+        return { success: false, error: 'Failed to get track heatmap' };
+      }
+    },
+  },
 };
+
+export default api;

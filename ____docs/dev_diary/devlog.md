@@ -2,6 +2,53 @@
 
 This file tracks development progress, features implemented, and issues resolved during the 9layer project development.
 
+## 2025-10-11 - Downloader stall detection and retry flow
+
+**Problem:** Long-running YouTube downloads could stall silently, leaving the UI without guidance or recovery.
+
+**Root Cause:** `DownloadService` lacked watchdog timers, emitted minimal failure metadata, and the frontend UI had no controls for retries or stall visibility.
+
+**Solution:**
+1. Added stall detection, timeout watchdog, missing-file checks, and richer error payloads throughout backend downloader code.
+2. Exposed retry endpoints and surfaced stall/retry states plus playlist summaries in `IntegratedPlayer.tsx`.
+3. Updated `start-dev.sh` to auto-detect free ports so backend/frontend launch reliably.
+
+**Files Modified:**
+- `/backend/prisma/schema.prisma`
+- `/backend/src/routes/download.routes.ts`
+- `/backend/src/services/download.service.ts`
+- `/backend/src/types/api.types.ts`
+- `/backend/src/utils/yt-dlp.ts`
+- `/backend/src/routes/playback.routes.ts`
+- `/frontend/src/components/IntegratedPlayer.tsx`
+- `/start-dev.sh`
+
+**Outcome:** Downloader sessions now detect stalls, emit actionable errors, and can be retried directly from the UI while the dev script finds open ports automatically.
+
+## 2025-10-11 - Playback heatmap analytics prototype
+
+**Problem:** Needed a track timeline heatmap similar to YouTube hotspots, but no API or frontend visualization existed.
+
+**Root Cause:** Playback segments were stored but never aggregated; the frontend lacked components/hooks to render heatmap data.
+
+**Solution:**
+1. Added `getTrackHeatmap()` plus `/analytics/track/:trackId/heatmap` endpoint to aggregate playback segments into buckets.
+2. Built `HeatmapTimeline` component with supporting hooks and integrated the data into library UI components.
+3. Documented the in-progress feature and styled scroll areas to match design requirements.
+
+**Files Modified:**
+- `/backend/src/routes/analytics.routes.ts`
+- `/backend/src/services/analytics.service.ts`
+- `/frontend/src/components/HeatmapTimeline.tsx`
+- `/frontend/src/hooks/useAnalytics.ts`
+- `/frontend/src/hooks/useProgressSmoothing.ts`
+- `/frontend/src/lib/api.ts`
+- `/frontend/src/components/SearchResults.tsx`
+- `/frontend/src/app/globals.css`
+- `/____docs/features/playback-heatmap.md`
+
+**Outcome:** Frontend can fetch and render preliminary heatmap analytics for tracks, establishing groundwork for future enhancements.
+
 ## Entries
 
 ```json

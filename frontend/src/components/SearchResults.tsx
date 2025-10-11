@@ -82,6 +82,9 @@ const SearchResults = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const requestIdRef = useRef(0);
+  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
 
   // Format time helper
   const formatTime = (seconds: number) => {
@@ -91,18 +94,23 @@ const SearchResults = ({
   };
 
   // Debounced search function
-  const performSearch = useCallback(async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
-      setResults(null);
-      setError(null);
-      return;
+  const fetchResults = useCallback(async (searchQuery: string) => {
+    const trimmedQuery = searchQuery.trim();
+    const params = new URLSearchParams();
+    if (trimmedQuery) {
+      params.set('q', trimmedQuery);
     }
+    const useFullLibraryLimits = !trimmedQuery;
+    params.set('artistLimit', (useFullLibraryLimits ? 500 : 100).toString());
+    params.set('albumLimit', (useFullLibraryLimits ? 2000 : 200).toString());
+    params.set('trackLimit', (useFullLibraryLimits ? 5000 : 500).toString());
+    const url = `${API_BASE}/search/all?${params.toString()}`;
+    const currentRequestId = ++requestIdRef.current;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const url = `${API_BASE}/search/all?q=${encodeURIComponent(searchQuery)}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -121,13 +129,23 @@ const SearchResults = ({
         throw new Error(data.error || 'Search failed');
       }
 
-      setResults(data.results);
+      if (requestIdRef.current === currentRequestId) {
+        setResults(data.results);
+        if (!trimmedQuery) {
+          setSelectedArtistId(null);
+          setSelectedAlbumId(null);
+        }
+      }
     } catch (err) {
       console.error('Search error:', err);
-      setError(err instanceof Error ? err.message : 'Search failed');
-      setResults(null);
+      if (requestIdRef.current === currentRequestId) {
+        setError(err instanceof Error ? err.message : 'Search failed');
+        setResults(null);
+      }
     } finally {
-      setIsLoading(false);
+      if (requestIdRef.current === currentRequestId) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -140,7 +158,12 @@ const SearchResults = ({
 
     // Set new timeout for debounced search
     debounceTimeoutRef.current = setTimeout(() => {
-      performSearch(query);
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery) {
+        fetchResults('');
+        return;
+      }
+      fetchResults(trimmedQuery);
     }, 300); // 300ms debounce
 
     return () => {
@@ -148,7 +171,7 @@ const SearchResults = ({
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [query, performSearch]);
+  }, [query, fetchResults]);
 
   // Show loading state
   if (isLoading) {
@@ -168,17 +191,8 @@ const SearchResults = ({
     );
   }
 
-  // Show empty state
-  if (!query.trim()) {
-    return (
-      <div className="p-4 text-center">
-        <div className="text-gray-400">Start typing to search your music library</div>
-      </div>
-    );
-  }
-
   // Show no results
-  if (results && results.artists.length === 0 && results.albums.length === 0 && results.tracks.length === 0) {
+  if (results && results.artists.length === 0 && results.albums.length === 0 && results.tracks.length === 0 && query.trim()) {
     return (
       <div className="p-4 text-center">
         <div className="text-gray-400">No results found for "{query}"</div>
@@ -192,129 +206,163 @@ const SearchResults = ({
 
   return (
     <div className="flex-1 overflow-auto">
-      {/* Three-column layout on desktop, stacked on mobile */}
-      <div className="h-full flex flex-col sm:flex-row gap-2 p-2">
+      {/* Responsive equal-width columns */}
+      <div className="h-full grid grid-cols-1 md:grid-cols-3 gap-2 p-2">
 
         {/* Artists Column */}
-        {results.artists.length > 0 && (
-          <div className="flex-1 bg-gray-800 rounded-lg flex flex-col">
-            <div className="p-3 border-b border-gray-700 flex items-center gap-2">
-              <UserIcon className="w-4 h-4 text-blue-400" />
-              <h3 className="font-medium text-blue-400">Artists ({results.totalArtists})</h3>
-            </div>
-            <div className="">
-              {results.artists.map((artist) => (
-                <div
-                  key={artist.id}
-                  className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-700 transition-colors cursor-pointer"
-                  onClick={() => onArtistClick?.(artist)}
-                >
-                  <div className="font-medium text-sm">{artist.name}</div>
-                  <div className="text-xs text-gray-400">
-                    {artist.trackCount} tracks • {artist.albumCount} albums
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="bg-gray-800 rounded-lg flex flex-col min-h-0">
+          <div className="p-3 border-b border-gray-700 flex items-center gap-2">
+            <UserIcon className="w-4 h-4 text-blue-400" />
+            <h3 className="font-medium text-blue-400">Artists ({results.totalArtists})</h3>
           </div>
-        )}
+          <div className="flex-1 overflow-auto min-h-0 scrollbar-thin-custom">
+            {results.artists.length > 0 ? (
+              results.artists.map((artist) => {
+                const isSelected = artist.id === selectedArtistId;
+                return (
+                  <div
+                    key={artist.id}
+                    className={
+                      `p-3 border-b border-gray-700 last:border-b-0 transition-colors cursor-pointer ` +
+                      (isSelected ? 'bg-blue-900/40 border-blue-500' : 'hover:bg-gray-700')
+                    }
+                    onClick={() => {
+                      const nextArtistId = isSelected ? null : artist.id;
+                      setSelectedArtistId(nextArtistId);
+                      setSelectedAlbumId(null);
+                      onArtistClick?.(artist);
+                    }}
+                  >
+                    <div className="font-medium text-sm">{artist.name}</div>
+                    <div className="text-xs text-gray-400">
+                      {artist.trackCount} tracks • {artist.albumCount} albums
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-3 text-xs text-gray-400">No artists found</div>
+            )}
+          </div>
+        </div>
 
         {/* Albums Column */}
-        {results.albums.length > 0 && (
-          <div className="flex-1 bg-gray-800 rounded-lg flex flex-col">
-            <div className="p-3 border-b border-gray-700 flex items-center gap-2">
-              <QueueListIcon className="w-4 h-4 text-green-400" />
-              <h3 className="font-medium text-green-400">Albums ({results.totalAlbums})</h3>
-            </div>
-            <div className="">
-              {results.albums.map((album) => (
-                <div
-                  key={album.id}
-                  className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-700 transition-colors cursor-pointer"
-                  onClick={() => onAlbumClick?.(album)}
-                >
-                  <div className="font-medium text-sm truncate">{album.title}</div>
-                  <div className="text-xs text-gray-400 truncate">
-                    {album.artistName} • {album.trackCount} tracks
-                  </div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {album.albumType}
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="bg-gray-800 rounded-lg flex flex-col min-h-0">
+          <div className="p-3 border-b border-gray-700 flex items-center gap-2">
+            <QueueListIcon className="w-4 h-4 text-green-400" />
+            <h3 className="font-medium text-green-400">Albums ({results.totalAlbums})</h3>
           </div>
-        )}
+          <div className="flex-1 overflow-auto min-h-0 scrollbar-thin-custom">
+            {results.albums.length > 0 ? (
+              (selectedArtistId
+                ? results.albums.filter(album => album.artistId === selectedArtistId)
+                : results.albums
+              ).map((album) => {
+                const isSelected = album.id === selectedAlbumId;
+                return (
+                  <div
+                    key={album.id}
+                    className={
+                      `p-3 border-b border-gray-700 last:border-b-0 transition-colors cursor-pointer ` +
+                      (isSelected ? 'bg-green-900/40 border-green-500' : 'hover:bg-gray-700')
+                    }
+                    onClick={() => {
+                      const nextAlbumId = isSelected ? null : album.id;
+                      setSelectedAlbumId(nextAlbumId);
+                      onAlbumClick?.(album);
+                    }}
+                  >
+                    <div className="font-medium text-sm truncate">{album.title}</div>
+                    <div className="text-xs text-gray-400 truncate">
+                      {album.artistName} • {album.trackCount} tracks
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">
+                      {album.albumType}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-3 text-xs text-gray-400">No albums found</div>
+            )}
+          </div>
+        </div>
 
         {/* Tracks Column */}
-        {results.tracks.length > 0 && (
-          <div className="flex-1 bg-gray-800 rounded-lg flex flex-col">
-            <div className="p-3 border-b border-gray-700 flex items-center gap-2">
-              <MusicalNoteIcon className="w-4 h-4 text-purple-400" />
-              <h3 className="font-medium text-purple-400">Songs ({results.totalTracks})</h3>
-            </div>
-            <div className="">
-              {results.tracks.map((track) => (
-                <div key={track.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-700 transition-colors">
-                  <div className="flex items-center gap-2">
-                    {/* Play Button */}
-                    <Button
-                      onClick={() => onPlayTrack(track.id)}
-                      className="h-8 w-8 p-0 flex-shrink-0"
-                      variant={currentTrackId === track.id && isPlaying ? "default" : "ghost"}
-                    >
-                      {currentTrackId === track.id && isPlaying ? (
-                        <PauseIcon className="w-4 h-4" />
-                      ) : (
-                        <PlayIcon className="w-4 h-4" />
-                      )}
-                    </Button>
-
-                    {/* Track Info */}
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate text-sm">{track.title}</div>
-                      <div className="text-xs text-gray-400 truncate">{track.artist}</div>
-                      <div className="text-xs text-gray-500 truncate">{track.album}</div>
-                    </div>
-
-                    {/* Rating Display */}
-                    <div className="flex items-center gap-1 text-xs text-gray-400">
-                      <span>{getTrackRating(track.id)}</span>
-                    </div>
-
-                    {/* Rating Buttons */}
-                    <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="bg-gray-800 rounded-lg flex flex-col min-h-0">
+          <div className="p-3 border-b border-gray-700 flex items-center gap-2">
+            <MusicalNoteIcon className="w-4 h-4 text-purple-400" />
+            <h3 className="font-medium text-purple-400">Songs ({results.totalTracks})</h3>
+          </div>
+          <div className="flex-1 overflow-auto min-h-0 scrollbar-thin-custom">
+            {results.tracks.length > 0 ? (
+              results.tracks
+                .filter(track => (selectedArtistId ? track.artistId === selectedArtistId : true))
+                .filter(track => (selectedAlbumId ? track.albumId === selectedAlbumId : true))
+                .map((track) => (
+                  <div key={track.id} className="p-3 border-b border-gray-700 last:border-b-0 hover:bg-gray-700 transition-colors">
+                    <div className="flex items-center gap-2">
+                      {/* Play Button */}
                       <Button
-                        onClick={() => onDecrementRating(track.id)}
-                        className="h-6 w-6 p-0"
-                        variant="ghost"
-                        size="sm"
+                        onClick={() => onPlayTrack(track.id)}
+                        className="h-8 w-8 p-0 flex-shrink-0"
+                        variant={currentTrackId === track.id && isPlaying ? "default" : "ghost"}
                       >
-                        <MinusIcon className="w-3 h-3" />
+                        {currentTrackId === track.id && isPlaying ? (
+                          <PauseIcon className="w-4 h-4" />
+                        ) : (
+                          <PlayIcon className="w-4 h-4" />
+                        )}
                       </Button>
-                      <Button
-                        onClick={() => onIncrementRating(track.id)}
-                        className="h-6 w-6 p-0"
-                        variant="ghost"
-                        size="sm"
-                      >
-                        <PlusIcon className="w-3 h-3" />
-                      </Button>
-                    </div>
 
-                    {/* Duration */}
-                    <div className="text-xs text-gray-400 font-mono flex-shrink-0 w-12 text-right">
-                      {track.duration ? formatTime(track.duration) : '--:--'}
+                      {/* Track Info */}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate text-sm">{track.title}</div>
+                        <div className="text-xs text-gray-400 truncate">{track.artist}</div>
+                        <div className="text-xs text-gray-500 truncate">{track.album}</div>
+                      </div>
+
+                      {/* Rating Display */}
+                      <div className="flex items-center gap-1 text-xs text-gray-400">
+                        <span>{getTrackRating(track.id)}</span>
+                      </div>
+
+                      {/* Rating Buttons */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          onClick={() => onDecrementRating(track.id)}
+                          className="h-6 w-6 p-0"
+                          variant="ghost"
+                          size="sm"
+                        >
+                          <MinusIcon className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          onClick={() => onIncrementRating(track.id)}
+                          className="h-6 w-6 p-0"
+                          variant="ghost"
+                          size="sm"
+                        >
+                          <PlusIcon className="w-3 h-3" />
+                        </Button>
+                      </div>
+
+                      {/* Duration */}
+                      <div className="text-xs text-gray-400 font-mono flex-shrink-0 w-12 text-right">
+                        {track.duration ? formatTime(track.duration) : '--:--'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))
+            ) : (
+              <div className="p-3 text-xs text-gray-400">No songs found</div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
-};
+}
+;
 
 export default SearchResults;

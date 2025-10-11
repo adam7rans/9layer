@@ -1,1 +1,20 @@
 @import "tailwindcss";
+
+.scrollbar-thin-custom {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(96, 165, 250, 0.5) transparent;
+}
+
+.scrollbar-thin-custom::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin-custom::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin-custom::-webkit-scrollbar-thumb {
+  background-color: rgba(96, 165, 250, 0.6);
+  border-radius: 9999px;
+}

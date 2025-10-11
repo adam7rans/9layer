@@ -237,4 +237,26 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       });
     }
   });
+
+  // Get heatmap data for track timeline (YouTube-style hotspot visualization)
+  fastify.get('/analytics/track/:trackId/heatmap', async (request, reply) => {
+    try {
+      const { trackId } = request.params as { trackId: string };
+      const { userId, bucketCount } = request.query as { userId?: string; bucketCount?: string };
+
+      const heatmap = await analyticsService.getTrackHeatmap(
+        trackId,
+        userId || 'default',
+        bucketCount ? parseInt(bucketCount) : 100
+      );
+
+      return reply.send({ success: true, data: heatmap });
+    } catch (error) {
+      console.error('Error getting track heatmap:', error);
+      return reply.status(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get track heatmap'
+      });
+    }
+  });
 }

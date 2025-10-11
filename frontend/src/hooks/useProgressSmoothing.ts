@@ -5,6 +5,7 @@ interface ProgressItem {
   progress: number;
   status: string;
   lastUpdate: number;
+  stallDetected?: boolean;
 }
 
 /**
@@ -12,29 +13,30 @@ interface ProgressItem {
  * Provides linear interpolation between actual progress values to create
  * the appearance of smooth progress even when backend emits coarse updates.
  */
-export function useProgressSmoothing<T extends { jobId: string; progress?: number; status?: string }>(
+export function useProgressSmoothing<T extends { jobId: string; progress?: number; status?: string; stallDetected?: boolean }>(
   jobs: T[],
   smoothingInterval = 100 // Update interpolated progress every 100ms
 ): T[] {
   const [smoothedJobs, setSmoothedJobs] = useState<T[]>(jobs);
   const progressMapRef = useRef<Map<string, ProgressItem>>(new Map());
-  const animationRef = useRef<number | null>(null);
+  const animationRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Update our internal progress map when jobs change
   useEffect(() => {
     const now = Date.now();
 
-    jobs.forEach(job => {
+    jobs.forEach((job: T) => {
       const existing = progressMapRef.current.get(job.jobId);
       const progress = job.progress ?? 0;
       const status = job.status ?? 'pending';
 
-      if (!existing || existing.progress !== progress) {
+      if (!existing || existing.progress !== progress || existing.status !== status || existing.stallDetected !== job.stallDetected) {
         progressMapRef.current.set(job.jobId, {
           jobId: job.jobId,
           progress,
           status,
-          lastUpdate: now
+          lastUpdate: now,
+          stallDetected: job.stallDetected,
         });
       }
     });
@@ -54,14 +56,14 @@ export function useProgressSmoothing<T extends { jobId: string; progress?: numbe
       const now = Date.now();
       let hasActiveDownloads = false;
 
-      const updated = jobs.map(job => {
+      const updated = jobs.map((job: T) => {
         const progressItem = progressMapRef.current.get(job.jobId);
         if (!progressItem) return job;
 
         const { progress: targetProgress, status, lastUpdate } = progressItem;
 
-        // Only smooth progress for active downloads
-        if (status === 'downloading' && targetProgress < 100) {
+        // Only smooth progress for active downloads that aren't stalled
+        if (status === 'downloading' && targetProgress < 100 && !job.stallDetected) {
           hasActiveDownloads = true;
 
           const timeSinceUpdate = now - lastUpdate;
@@ -85,19 +87,19 @@ export function useProgressSmoothing<T extends { jobId: string; progress?: numbe
 
         return job;
       });
-
       setSmoothedJobs(updated);
 
       // Continue animation if there are active downloads
       if (hasActiveDownloads) {
         animationRef.current = setTimeout(animate, smoothingInterval);
-      } else {
+      } else if (animationRef.current !== null) {
+        clearTimeout(animationRef.current);
         animationRef.current = null;
       }
     };
 
     // Start animation if there are downloading jobs
-    const hasDownloading = jobs.some(job => job.status === 'downloading');
+    const hasDownloading = jobs.some((job: T) => job.status === 'downloading' && !job.stallDetected);
     if (hasDownloading && !animationRef.current) {
       animationRef.current = setTimeout(animate, smoothingInterval);
     }
