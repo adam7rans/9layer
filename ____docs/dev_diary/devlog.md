@@ -2,6 +2,31 @@
 
 This file tracks development progress, features implemented, and issues resolved during the 9layer project development.
 
+## 2025-10-12 - Playback analytics polish and sequential queue mode
+
+**Problem:** Top-tracks analytics still relied on mixed score metrics, sequential playback ignored album order, and timeline tooltips obscured the waveform while recent playback lacked immediate visual feedback.
+
+**Root Cause:** `getUserTopTracks()` continued including unrated tracks and non-rating metrics, the player never hydrated an album-based queue when toggling sequential mode, and the heatmap tooltip positioned above the SVG while real-time analytics segments were only visible after page reload.
+
+**Solution:**
+1. Reworked `backend/src/services/analytics.service.ts` and `backend/src/routes/analytics.routes.ts` so top tracks filter to positive ratings and expose detailed play counts and duration stats.
+2. Updated `frontend/src/components/IntegratedPlayer.tsx`, `frontend/src/components/AnalyticsDashboard.tsx`, and `frontend/src/lib/api.ts` to surface per-track listening stats, fetch rating-only analytics, and build sequential album queues with proper next/previous handling alongside new toast notifications for ratings and downloads.
+3. Tweaked `frontend/src/components/HeatmapTimeline.tsx`, `frontend/src/app/layout.tsx`, and related package files to relocate the tooltip below the timeline and enable dark-themed `sonner` toasts across the app.
+
+**Files Modified:**
+- `/README.md`
+- `/backend/src/routes/analytics.routes.ts`
+- `/backend/src/services/analytics.service.ts`
+- `/frontend/package.json`
+- `/frontend/package-lock.json`
+- `/frontend/src/app/layout.tsx`
+- `/frontend/src/components/AnalyticsDashboard.tsx`
+- `/frontend/src/components/HeatmapTimeline.tsx`
+- `/frontend/src/components/IntegratedPlayer.tsx`
+- `/frontend/src/lib/api.ts`
+
+**Outcome:** Analytics rankings now reflect user ratings only, the player delivers consistent album-order playback with rich listening stats, and users receive immediate dark-themed toast feedback while heatmap tooltips stay clear of the timeline.
+
 ## 2025-10-11 - Missing audio indicators for search results
 
 **Problem:** Artists and albums containing tracks without audio files were indistinguishable in the search UI, even when every track in an album was missing.

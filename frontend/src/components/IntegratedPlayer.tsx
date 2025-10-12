@@ -20,12 +20,23 @@ import {
   ListBulletIcon,
   PlusIcon,
   MinusIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  ArrowsRightLeftIcon
 } from '@heroicons/react/24/solid';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface IntegratedPlayerProps {
   className?: string;
+}
+
+interface TrackListeningStats {
+  rating: number;
+  totalListens: number;
+  completedCount: number;
+  skippedCount: number;
+  partialCount: number;
+  totalTimeListened: number;
 }
 
 const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
@@ -74,9 +85,12 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   const [showAutoplayHelp, setShowAutoplayHelp] = useState(false);
   const [localPlayback, setLocalPlayback] = useState(true);
   const [analyticsRefreshTrigger, setAnalyticsRefreshTrigger] = useState(0);
+  const [currentTrackAnalytics, setCurrentTrackAnalytics] = useState<TrackListeningStats | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const initRef = useRef(false);
   const isUserAdjustingVolume = useRef(false);
+  const downloadToastIds = useRef(new Set<string>());
+  const albumToastIds = useRef(new Set<number>());
   
   // Analytics hook
   const analytics = useAnalytics();
@@ -221,16 +235,94 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     return queue[currentIndex + 1];
   }, []);
 
+  const getPreviousTrackSequential = useCallback((currentTrack: Track, queue: Track[]) => {
+    if (!currentTrack || queue.length === 0) return null;
+
+    const currentIndex = queue.findIndex(track => track.id === currentTrack.id);
+    if (currentIndex === -1) {
+      return queue[0];
+    }
+
+    const previousIndex = currentIndex === 0 ? queue.length - 1 : currentIndex - 1;
+    return queue[previousIndex];
+  }, []);
+
+  const buildSequentialQueueForTrack = useCallback(async (track?: Track | null) => {
+    if (!track?.albumId) return null;
+
+    try {
+      const response = await api.getAlbumTracks(track.albumId);
+      if (!response.success || !response.data) return null;
+
+      const albumTracks: Track[] = response.data.tracks.map((albumTrack: any) => ({
+        id: albumTrack.id,
+        title: albumTrack.title,
+        artist: albumTrack.artist,
+        album: albumTrack.album,
+        duration: albumTrack.duration,
+        filePath: albumTrack.filePath ?? albumTrack.file_path ?? null,
+        fileSize: albumTrack.fileSize ?? null,
+        youtubeId: albumTrack.youtubeId,
+        likeability: albumTrack.likeability,
+        artistId: albumTrack.artistId,
+        albumId: albumTrack.albumId,
+      }));
+
+      const currentFromAlbum = albumTracks.find(t => t.id === track.id) || track;
+
+      setTracks(albumTracks);
+      setPlaybackState(prev => ({
+        ...prev,
+        queue: albumTracks,
+        currentTrack: currentFromAlbum,
+      }));
+      return { queue: albumTracks, currentTrack: currentFromAlbum };
+    } catch (error) {
+      console.error('Failed to build sequential queue:', error);
+      return null;
+    }
+  }, []);
+
+  const prepareSequentialMode = useCallback(async (trackOverride?: Track | null) => {
+    return await buildSequentialQueueForTrack(trackOverride ?? playbackState.currentTrack);
+  }, [buildSequentialQueueForTrack, playbackState.currentTrack]);
+
+  const togglePlaybackMode = useCallback(async () => {
+    if (playbackMode === 'random') {
+      setPlaybackMode('sequential');
+      await prepareSequentialMode(playbackState.currentTrack);
+    } else {
+      setPlaybackMode('random');
+      setPlaybackState(prev => ({
+        ...prev,
+        queue: [],
+      }));
+    }
+  }, [playbackMode, prepareSequentialMode, playbackState.currentTrack]);
+
   // Modified getRandomTrack to respect playback mode
   const getNextTrack = useCallback(async () => {
-    if (playbackMode === 'sequential' && playbackState.queue.length > 0 && playbackState.currentTrack) {
-      return getNextTrackSequential(playbackState.currentTrack, playbackState.queue);
+    if (playbackMode === 'sequential') {
+      let queue = playbackState.queue;
+      let current = playbackState.currentTrack;
+
+      if ((!queue || queue.length === 0) || !current) {
+        const result = await prepareSequentialMode();
+        if (result) {
+          queue = result.queue;
+          current = result.currentTrack;
+        }
+      }
+
+      if (queue && queue.length > 0 && current) {
+        return getNextTrackSequential(current, queue);
+      }
     }
 
     // Fall back to random
     const response = await api.getRandomTrack();
     return response.success && response.data?.track ? response.data.track : null;
-  }, [playbackMode, playbackState.queue, playbackState.currentTrack, getNextTrackSequential]);
+  }, [playbackMode, playbackState.queue, playbackState.currentTrack, getNextTrackSequential, prepareSequentialMode]);
 
   // Handler for artist clicks - get artist tracks and play first one
   const handleArtistClick = useCallback(async (artist: SearchArtist) => {
@@ -411,10 +503,35 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
   // Skip to previous track
   const handlePrevious = useCallback(async () => {
-    // Previous now plays a random track
     try {
-      // Set user interaction flag for mobile autoplay
       setHasUserInteracted(true);
+
+      let queue = playbackState.queue;
+      let current = playbackState.currentTrack;
+
+      if (playbackMode === 'sequential' && (queue.length === 0 || !current)) {
+        const result = await prepareSequentialMode();
+        if (result) {
+          queue = result.queue;
+          current = result.currentTrack;
+        }
+      }
+
+      if (playbackMode === 'sequential' && current) {
+        const previousTrack = getPreviousTrackSequential(current, queue);
+        if (previousTrack) {
+          const response = await api.playTrack(previousTrack.id);
+          if (response.success) {
+            setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: previousTrack, queue: queue }));
+            if (previousTrack.id) {
+              await analytics.startListeningSession(previousTrack.id);
+              setAnalyticsRefreshTrigger(prev => prev + 1);
+            }
+            return;
+          }
+        }
+      }
+
       const res = await api.getRandomTrack();
       if (res.success && res.data?.track) {
         const t = res.data.track;
@@ -432,9 +549,9 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         }
       }
     } catch (e) {
-      console.error('Failed to play previous (random):', e);
+      console.error('Failed to play previous track:', e);
     }
-  }, [analytics]);
+  }, [analytics, playbackMode, playbackState.currentTrack, playbackState.queue, prepareSequentialMode, getPreviousTrackSequential]);
 
   // Skip to next track
   const handleNext = useCallback(async () => {
@@ -442,6 +559,38 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     try {
       // Set user interaction flag for mobile autoplay
       setHasUserInteracted(true);
+      if (playbackMode === 'sequential') {
+        let queue = playbackState.queue;
+        let current = playbackState.currentTrack;
+
+        if (queue.length === 0 || !current) {
+          const result = await prepareSequentialMode();
+          if (result) {
+            queue = result.queue;
+            current = result.currentTrack;
+          }
+        }
+
+        if (current && queue.length > 0) {
+          const nextTrack = getNextTrackSequential(current, queue);
+          if (nextTrack) {
+            setError(null);
+            const response = await api.playTrack(nextTrack.id);
+            if (response.success) {
+              setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: nextTrack, queue }));
+              if (nextTrack.id) {
+                await analytics.startListeningSession(nextTrack.id);
+                setAnalyticsRefreshTrigger(prev => prev + 1);
+              }
+              return;
+            } else {
+              setError(response.error || 'Failed to play track');
+              return;
+            }
+          }
+        }
+      }
+
       const t = await getNextTrack();
       if (t) {
         setTracks([t]);
@@ -460,7 +609,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     } catch (e) {
       console.error('Failed to play next (random):', e);
     }
-  }, [analytics, getNextTrack]);
+  }, [analytics, getNextTrack, playbackMode, playbackState.queue, playbackState.currentTrack, prepareSequentialMode, getNextTrackSequential]);
 
   // Initialize reasonable volume on first load
   useEffect(() => {
@@ -601,6 +750,9 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           await analytics.startListeningSession(track.id);
           // Trigger analytics refresh for Recently Played and Full History
           setAnalyticsRefreshTrigger(prev => prev + 1);
+          if (playbackMode === 'sequential') {
+            await prepareSequentialMode(track || playbackState.currentTrack);
+          }
         }
         
       } else {
@@ -709,10 +861,16 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       console.log('[RATING] Increment result:', result);
       // Trigger analytics refresh
       setAnalyticsRefreshTrigger(prev => prev + 1);
+      const track = tracks.find(t => t.id === trackId);
+      const descriptionParts = [track?.title, track?.artist].filter(Boolean);
+      toast.success('Rating increased', {
+        description: descriptionParts.join(' — ') || undefined,
+      });
     } catch (error) {
       console.error('Failed to increment rating:', error);
+      toast.error('Failed to increase rating');
     }
-  }, [analytics]);
+  }, [analytics, tracks]);
 
   const handleDecrementRating = useCallback(async (trackId: string) => {
     console.log('[RATING] Decrementing rating for track:', trackId);
@@ -721,10 +879,16 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       console.log('[RATING] Decrement result:', result);
       // Trigger analytics refresh
       setAnalyticsRefreshTrigger(prev => prev + 1);
+      const track = tracks.find(t => t.id === trackId);
+      const descriptionParts = [track?.title, track?.artist].filter(Boolean);
+      toast.success('Rating decreased', {
+        description: descriptionParts.join(' — ') || undefined,
+      });
     } catch (error) {
       console.error('Failed to decrement rating:', error);
+      toast.error('Failed to decrease rating');
     }
-  }, [analytics]);
+  }, [analytics, tracks]);
 
   // Note: Track filtering is now handled by the SearchResults component
 
@@ -734,6 +898,48 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  useEffect(() => {
+    if (playbackMode !== 'sequential') return;
+    const current = playbackState.currentTrack;
+    if (!current?.albumId) return;
+
+    const queueContainsTrack = playbackState.queue.some(t => t.id === current.id);
+    if (!queueContainsTrack) {
+      prepareSequentialMode(current);
+    }
+  }, [playbackMode, playbackState.currentTrack?.id, playbackState.currentTrack?.albumId, playbackState.queue, prepareSequentialMode]);
+
+  // Load analytics for the currently playing track
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchAnalytics = async () => {
+      const trackId = playbackState.currentTrack?.id;
+      if (!trackId) {
+        setCurrentTrackAnalytics(null);
+        return;
+      }
+
+      try {
+        const data = await analytics.getTrackAnalytics(trackId);
+        if (!cancelled) {
+          setCurrentTrackAnalytics(data);
+        }
+      } catch (error) {
+        console.error('Failed to load track analytics:', error);
+        if (!cancelled) {
+          setCurrentTrackAnalytics(null);
+        }
+      }
+    };
+
+    fetchAnalytics();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [analytics, playbackState.currentTrack?.id, analyticsRefreshTrigger]);
 
   const handleDownload = useCallback(async () => {
     if (!downloadUrl.trim()) return;
@@ -1029,6 +1235,33 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     };
   }, []); // No dependencies - always active
 
+  useEffect(() => {
+    downloadJobs.forEach(job => {
+      if (job.status === 'completed' && !downloadToastIds.current.has(job.jobId)) {
+        downloadToastIds.current.add(job.jobId);
+        const parts = [] as string[];
+        if (job.artist) parts.push(job.artist);
+        if (job.title) parts.push(job.title);
+        const description = parts.length > 0 ? parts.join(' — ') : undefined;
+        toast.success('Song download complete', {
+          description,
+        });
+      }
+    });
+  }, [downloadJobs]);
+
+  useEffect(() => {
+    completedAlbums.forEach(album => {
+      const key = album.completedAt.getTime();
+      if (!albumToastIds.current.has(key)) {
+        albumToastIds.current.add(key);
+        toast.success('Album download complete', {
+          description: `${album.albumName} • ${album.totalTracks} tracks`,
+        });
+      }
+    });
+  }, [completedAlbums]);
+
   return (
     <div className={cn("h-screen flex flex-col bg-gray-900 text-white", className)}>
       {/* Hidden Audio Element */}
@@ -1100,9 +1333,55 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         
         
 
-        {/* Centered Playback Controls */}
-        <div className="flex justify-center p-3">
-          <div className="flex items-center gap-3">
+        {/* Playback Controls Row */}
+        <div className="flex flex-wrap items-center justify-between gap-4 p-3 md:flex-nowrap">
+          {/* Volume control */}
+          <div className="flex items-center gap-2 text-gray-400">
+            <SpeakerWaveIcon className="w-5 h-5" />
+            <Slider
+              value={[Math.round(Math.max(0, Math.min(1, playbackState.volume)) * 100)]}
+              onValueChange={async (value) => {
+                const volumePercent = value[0];
+                const newVolume = volumePercent / 100;
+
+                // Set user interaction flag for mobile autoplay
+                setHasUserInteracted(true);
+
+                // Mark that user is adjusting volume (prevent polling override)
+                isUserAdjustingVolume.current = true;
+                
+                // Update local state immediately for responsive UI
+                setPlaybackState(prev => ({ ...prev, volume: newVolume }));
+                
+                // Apply volume to audio element immediately
+                if (audioRef.current) {
+                  audioRef.current.volume = newVolume;
+                }
+                
+                // Send to backend API to persist the volume
+                try {
+                  await api.setVolume(volumePercent);
+                } catch (error) {
+                  console.error('Failed to update volume on backend:', error);
+                }
+                
+                // After a longer delay, allow polling to resume
+                setTimeout(() => {
+                  isUserAdjustingVolume.current = false;
+                }, 3000); // 3 second delay to prevent snapping
+              }}
+              max={100}
+              min={0}
+              step={1}
+              className="w-28 sm:w-32"
+            />
+            <span className="text-xs text-gray-300 w-10 text-right">
+              {Math.round(Math.max(0, Math.min(1, playbackState.volume)) * 100)}%
+            </span>
+          </div>
+
+          {/* Center controls */}
+          <div className="flex items-center gap-3 mx-auto">
             <Button 
               onClick={handlePrevious}
               disabled={false}
@@ -1134,92 +1413,74 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
               <ForwardIcon className="w-5 h-5" />
             </Button>
           </div>
+
+          {/* Playback mode toggle */}
+          <div className="flex items-center justify-end w-full md:w-auto">
+            <Button
+              onClick={() => setPlaybackMode(prev => prev === 'random' ? 'sequential' : 'random')}
+              variant={playbackMode === 'random' ? 'default' : 'outline'}
+              className="flex items-center gap-2"
+              title={playbackMode === 'random' ? 'Random playback enabled' : 'Switch to random playback'}
+            >
+              <ArrowsRightLeftIcon className="w-5 h-5" />
+              <span className="text-xs uppercase tracking-wide hidden sm:inline">
+                {playbackMode === 'random' ? 'Random' : 'Sequential'}
+              </span>
+            </Button>
+          </div>
         </div>
 
         {/* Track Info Row */}
         {playbackState.currentTrack && (
-          <div className="text-center pb-3">
-            <div className="font-medium text-sm truncate">{playbackState.currentTrack.title}</div>
-            <div className="text-xs text-gray-400 truncate">
-              {playbackState.currentTrack.artist}
-              {playbackState.currentTrack.album && ` • ${playbackState.currentTrack.album.replace(/^Album - /, '')}`}
-            </div>
-            {/* Local playback toggle button under metadata */}
-            <div className="mt-2 flex items-center justify-center">
-              <Button
-                onClick={() => setLocalPlayback((v) => !v)}
-                size="sm"
-                variant={localPlayback ? 'default' : 'outline'}
-                aria-pressed={localPlayback}
-                title="Play audio locally on this device"
-              >
-                Play on this device {localPlayback ? 'ON' : 'OFF'}
-              </Button>
-            </div>
-            {/* Plus / Minus action buttons under metadata */}
-            <div className="mt-2 flex items-center justify-center gap-2">
-              <Button
-                onClick={() => playbackState.currentTrack?.id && handleIncrementRating(playbackState.currentTrack.id)}
-                className="h-[50px] w-[50px] p-0"
-                variant="outline"
-                title="Increase rating"
-              >
-                <PlusIcon className="w-5 h-5" />
-              </Button>
-              <Button
-                onClick={() => playbackState.currentTrack?.id && handleDecrementRating(playbackState.currentTrack.id)}
-                className="h-[50px] w-[50px] p-0"
-                variant="outline"
-                title="Decrease rating"
-              >
-                <MinusIcon className="w-5 h-5" />
-              </Button>
-            </div>
-            
-            {/* Volume Control */}
-            <div className="mt-3 px-4">
-              <div className="flex items-center gap-2">
-                <SpeakerWaveIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <Slider
-                  value={[Math.round(Math.max(0, Math.min(1, playbackState.volume)) * 100)]}
-                  onValueChange={async (value) => {
-                    const volumePercent = value[0];
-                    const newVolume = volumePercent / 100;
+          <div className="pb-3 px-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-8">
+              <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+                <div className="font-medium text-sm truncate w-full">{playbackState.currentTrack.title}</div>
+                <div className="text-xs text-gray-400 truncate w-full">
+                  {playbackState.currentTrack.artist}
+                  {playbackState.currentTrack.album && ` • ${playbackState.currentTrack.album.replace(/^Album - /, '')}`}
+                </div>
+                {/* Local playback toggle button under metadata */}
+                <div className="mt-2 flex items-center justify-center md:justify-start w-full">
+                  <Button
+                    onClick={() => setLocalPlayback((v) => !v)}
+                    size="sm"
+                    variant={localPlayback ? 'default' : 'outline'}
+                    aria-pressed={localPlayback}
+                    title="Play audio locally on this device"
+                  >
+                    Play on this device {localPlayback ? 'ON' : 'OFF'}
+                  </Button>
+                </div>
+                {/* Plus / Minus action buttons under metadata */}
+                <div className="mt-2 flex items-center justify-center md:justify-start gap-2 w-full">
+                  <Button
+                    onClick={() => playbackState.currentTrack?.id && handleIncrementRating(playbackState.currentTrack.id)}
+                    className="h-[50px] w-[50px] p-0"
+                    variant="outline"
+                    title="Increase rating"
+                  >
+                    <PlusIcon className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    onClick={() => playbackState.currentTrack?.id && handleDecrementRating(playbackState.currentTrack.id)}
+                    className="h-[50px] w-[50px] p-0"
+                    variant="outline"
+                    title="Decrease rating"
+                  >
+                    <MinusIcon className="w-5 h-5" />
+                  </Button>
+                </div>
+                
+              </div>
 
-                    // Set user interaction flag for mobile autoplay
-                    setHasUserInteracted(true);
-
-                    // Mark that user is adjusting volume (prevent polling override)
-                    isUserAdjustingVolume.current = true;
-                    
-                    // Update local state immediately for responsive UI
-                    setPlaybackState(prev => ({ ...prev, volume: newVolume }));
-                    
-                    // Apply volume to audio element immediately
-                    if (audioRef.current) {
-                      audioRef.current.volume = newVolume;
-                    }
-                    
-                    // Send to backend API to persist the volume
-                    try {
-                      await api.setVolume(volumePercent);
-                    } catch (error) {
-                      console.error('Failed to update volume on backend:', error);
-                    }
-                    
-                    // After a longer delay, allow polling to resume
-                    setTimeout(() => {
-                      isUserAdjustingVolume.current = false;
-                    }, 3000); // 3 second delay to prevent snapping
-                  }}
-                  max={100}
-                  min={0}
-                  step={1}
-                  className="flex-1"
-                />
-                <span className="text-xs text-gray-400 w-12 text-right">
-                  {Math.round(Math.max(0, Math.min(1, playbackState.volume)) * 100)}%
-                </span>
+              <div className="bg-gray-900/60 border border-gray-700 rounded p-3 text-xs text-gray-400 min-w-[200px]">
+                <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-2">Listening stats</div>
+                <div className="flex flex-col gap-1">
+                  <span>Full plays: {currentTrackAnalytics?.completedCount ?? 0}</span>
+                  <span>Partial plays: {currentTrackAnalytics?.partialCount ?? 0}</span>
+                  <span>Total time listened: {formatTime(currentTrackAnalytics?.totalTimeListened ?? 0)}</span>
+                </div>
               </div>
             </div>
           </div>

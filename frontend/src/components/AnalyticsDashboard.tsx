@@ -229,9 +229,7 @@ const AnalyticsDashboard = ({
             <div className="text-xs text-gray-400 truncate">{track.artist?.name || track.artist}</div>
             {showExtraInfo && track.analytics && (
               <div className="text-xs text-gray-500 mt-1">
-                Score: {track.analytics.score.toFixed(2)} | 
-                Plays: {track.analytics.listenCount} | 
-                Completion: {(track.analytics.completionRate * 100).toFixed(0)}%
+                Rating: {track.analytics.rating}
               </div>
             )}
             {track.playCount && (
@@ -449,10 +447,10 @@ const AnalyticsDashboard = ({
           <div>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <ChartBarIcon className="w-5 h-5" />
-              Top Tracks (AI Score)
+              Top Tracks (Ratings)
             </h2>
             <p className="text-gray-400 text-sm mb-4">
-              Ranked by AI score combining ratings, listen count, and completion rate
+              Ranked by your +/- ratings
             </p>
             {analyticsData.topTracks.length === 0 ? (
               <div className="text-center text-gray-400 py-8">

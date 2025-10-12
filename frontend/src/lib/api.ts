@@ -554,15 +554,19 @@ export const api = {
     },
 
     // Get track analytics
-    getTrackAnalytics: async (trackId: string, userId?: string): Promise<ApiResponse<any>> => {
+    getTrackAnalytics: async (trackId: string, userId?: string): Promise<any | null> => {
       try {
         const queryParams = new URLSearchParams();
         if (userId) queryParams.set('userId', userId);
         
         const response = await fetch(`${API_BASE}/analytics/track/${trackId}?${queryParams}`);
-        return await response.json();
+        const raw = await response.json();
+        if (raw.success) {
+          return raw.data;
+        }
+        return null;
       } catch (error) {
-        return { success: false, error: 'Failed to get track analytics' };
+        return null;
       }
     },
 

@@ -162,7 +162,7 @@ export async function analyticsRoutes(fastify: FastifyInstance) {
       const { userId } = request.query as { userId?: string };
 
       const analytics = await analyticsService.getTrackAnalytics(trackId, userId);
-      return reply.send(analytics);
+      return reply.send({ success: true, data: analytics });
     } catch (error) {
       console.error('Error getting track analytics:', error);
       return reply.status(500).send({ error: 'Failed to get track analytics' });

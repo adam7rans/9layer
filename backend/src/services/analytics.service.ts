@@ -167,11 +167,12 @@ export class AnalyticsService {
 
     // Calculate analytics
     const totalListens = sessions.length;
+    const completedCount = sessions.filter(s => s.completed).length;
+    const skippedCount = sessions.filter(s => s.skipped).length;
+    const partialCount = Math.max(0, totalListens - completedCount - skippedCount);
     const totalTimeListened = sessions.reduce((sum, session) => sum + session.totalTime, 0);
-    const completionRate = sessions.length > 0 ? 
-      sessions.filter(s => s.completed).length / sessions.length : 0;
-    const skipRate = sessions.length > 0 ? 
-      sessions.filter(s => s.skipped).length / sessions.length : 0;
+    const completionRate = totalListens > 0 ? completedCount / totalListens : 0;
+    const skipRate = totalListens > 0 ? skippedCount / totalListens : 0;
 
     // Calculate most listened segments
     const segmentMap = new Map<string, number>();
@@ -184,6 +185,9 @@ export class AnalyticsService {
       trackId,
       rating: rating?.rating || 0,
       totalListens,
+      completedCount,
+      skippedCount,
+      partialCount,
       totalTimeListened,
       completionRate,
       skipRate,
@@ -197,52 +201,33 @@ export class AnalyticsService {
 
   // Get user's top tracks based on analytics
   async getUserTopTracks(userId: string = 'default', limit: number = 20) {
-    const trackStats = await prisma.track.findMany({
+    const ratedTracks = await prisma.trackRating.findMany({
+      where: {
+        userId,
+        rating: {
+          gt: 0,
+        },
+      },
       include: {
-        artist: true,
-        album: true,
-        trackRatings: {
-          where: { userId },
-        },
-        listeningSessions: {
-          where: { userId },
-        },
-        _count: {
-          select: {
-            listeningSessions: {
-              where: { userId },
-            },
+        track: {
+          include: {
+            artist: true,
+            album: true,
           },
         },
       },
+      orderBy: {
+        rating: 'desc',
+      },
+      take: limit,
     });
 
-    // Calculate score based on rating, listen count, and total time
-    const scoredTracks = trackStats.map(track => {
-      const rating = track.trackRatings[0]?.rating || 0;
-      const listenCount = track._count.listeningSessions;
-      const totalTime = track.listeningSessions.reduce((sum, session) => sum + session.totalTime, 0);
-      const completionRate = track.listeningSessions.length > 0 ?
-        track.listeningSessions.filter(s => s.completed).length / track.listeningSessions.length : 0;
-
-      // Weighted score: rating (40%) + listen frequency (30%) + completion rate (30%)
-      const score = (rating * 0.4) + (listenCount * 0.3) + (completionRate * 0.3);
-
-      return {
-        ...track,
-        analytics: {
-          rating,
-          listenCount,
-          totalTime,
-          completionRate,
-          score,
-        },
-      };
-    });
-
-    return scoredTracks
-      .sort((a, b) => b.analytics.score - a.analytics.score)
-      .slice(0, limit);
+    return ratedTracks.map(ratedTrack => ({
+      ...ratedTrack.track,
+      analytics: {
+        rating: ratedTrack.rating,
+      },
+    }));
   }
 
   // Get listening history

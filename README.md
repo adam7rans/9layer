@@ -2,21 +2,23 @@
 
 # 9layer — Local Music Library + Player (Backend + Frontend)
 
+**Last updated:** 2025-10-11
+
 9layer is a local-first music player with a TypeScript backend and a modern Next.js frontend. It plays audio files from your machine that are indexed in a PostgreSQL database.
 
 Important: You must have music files available locally for playback. The in-app YouTube download feature is experimental/untested and may not work yet.
 
 ## Features
-- Local library playback with queue and controls
-- Search across artists/albums/tracks
+- Local library playback with queue, ratings, and auto-advance
+- Search across artists/albums/tracks with missing-audio indicators
 - Modern UI built with Tailwind and shadcn/ui
 - TypeScript/Fastify backend with Prisma + PostgreSQL
 - REST API integration (WebSocket realtime planned)
 
 ## Architecture
-- `backend-ts/` — Fastify (TypeScript), Prisma ORM, PostgreSQL
-- `frontend/` — Next.js app (runs on port 3004 by default)
-- Shared: audio files reside on your filesystem; DB stores metadata and file paths
+- `backend/` — Fastify (TypeScript), Prisma ORM, PostgreSQL, maintenance scripts
+- `frontend/` — Next.js app (runs on port 3000+ by default)
+- Shared: audio files reside on your filesystem; the database stores metadata, ratings, and file paths
 
 ## Prerequisites
 - Node.js 18+
@@ -42,14 +44,14 @@ CREATE USER music_user WITH PASSWORD 'your_secure_password';
 GRANT ALL PRIVILEGES ON DATABASE music_player TO music_user;
 ```
 
-## Backend Setup (`backend-ts/`)
+## Backend Setup (`backend/`)
 1) Install deps
 ```bash
 npm install
 ```
 
 2) Environment
-Create `backend-ts/.env` (see `.env.example` if present):
+Create `backend/.env` (see `.env.example` if present):
 ```
 DATABASE_URL=postgresql://music_user:your_secure_password@localhost:5432/music_player
 PORT=8000
@@ -71,7 +73,7 @@ npm run dev
 ```
 
 Notes:
-- REST endpoints for playback/queue/search are under `backend-ts/src/routes/` (e.g. `playback.routes.ts`).
+- REST endpoints for playback/queue/search are under `backend/src/routes/` (e.g. `playback.routes.ts`).
 - WebSocket support is planned; a polling fallback is used by the frontend today.
 
 ## Frontend Setup (`frontend/`)
@@ -124,16 +126,22 @@ Options:
 - CORS: confirm `CORS_ORIGIN` matches whichever frontend URL you are using (e.g. `http://localhost:3000`) and the frontend points to `http://localhost:8000`.
 - Test file: open `frontend/public/audio-test.html` in a browser to confirm your browser can play basic audio.
 
+## Maintenance & Tooling
+- **Missing audio scan:** `backend/scripts/flag_missing_audio.ts` checks for tracks whose files are gone. Run with `npx ts-node backend/scripts/flag_missing_audio.ts --json backend/missing-audio-report.json` to produce a report, then rerun with `--apply` to null-out missing file paths.
+- **Portable launcher:** `npm install -g .` exposes the `9layer` CLI wrapper to start/stop both dev servers.
+
 ## Project Structure (key parts)
 ```
 9layer/
-├── backend-ts/
+├── backend/
 │   ├── prisma/
+│   ├── scripts/
 │   └── src/
 ├── frontend/
 │   ├── public/
 │   └── src/
-├── setup_postgres.sql
+├── start-dev.sh
+├── package.json
 └── README.md
 ```
 

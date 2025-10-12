@@ -232,7 +232,7 @@ const HeatmapTimeline = ({
           className="absolute z-10 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-lg border border-gray-600 pointer-events-none"
           style={{
             left: `${hoveredPercentage}%`,
-            top: '-30px',
+            top: `${height + 6}px`,
             transform: 'translateX(-50%)',
             whiteSpace: 'nowrap'
           }}
