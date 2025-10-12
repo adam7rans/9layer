@@ -23,8 +23,8 @@ Files modified:
 
 ```
 
-## 2. Update Development Log
-Add a new entry to `_docs/dev_diary/devlog.md` at the top of the file with:
+## 2. Update Documentation
+1. Add a new entry to `_docs/dev_diary/devlog.md` at the top of the file with:
 - **Date**: Current date in YYYY-MM-DD format
 - **Title**: Descriptive title of the work completed
 - **Problem**: Clear description of the issue encountered
@@ -52,6 +52,8 @@ Follow this format:
 
 **Outcome:** [Description of final result and user impact]
 ```
+
+2. Update `README.md` (root) with any relevant changes to features, usage instructions, or workflows introduced during the session. Ensure the "Last updated" date reflects the current day when modifications are made.
 
 ## 3. Commit and Push Changes
 Execute the complete git workflow:

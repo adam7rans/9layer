@@ -539,15 +539,68 @@ export class YTDlpWrapper {
   private static parseVideoInfo(info: any): TrackMetadata | null {
     if (!info) return null;
 
+    const artistCandidates: Array<any> = [
+      info.artist,
+      info.track_artist,
+      Array.isArray(info.artists) ? info.artists[0]?.name : undefined,
+      info.uploader,
+      info.creator,
+    ];
+    const albumCandidates: Array<any> = [
+      info.album,
+      info.album_title,
+      info.playlist_title,
+      info.playlist,
+    ];
+
+    const artist = artistCandidates
+      .map(candidate => YTDlpWrapper.sanitizeArtistName(candidate))
+      .find(Boolean) || 'Unknown Artist';
+
+    const album = albumCandidates
+      .map(candidate => YTDlpWrapper.sanitizeAlbumCandidate(candidate))
+      .find(Boolean);
+
     return {
       title: info.title || 'Unknown Title',
-      artist: info.uploader || info.creator || 'Unknown Artist',
-      album: info.playlist_title || undefined,
+      artist,
+      ...(album ? { album } : {}),
       duration: info.duration || 0,
       youtubeId: info.id || undefined,
       thumbnailUrl: info.thumbnail || undefined,
       description: info.description || undefined,
     };
+  }
+
+  private static sanitizeArtistName(candidate: any): string | undefined {
+    if (typeof candidate !== 'string') return undefined;
+    const name = candidate.trim();
+    if (!name) return undefined;
+    const topicMatch = name.match(/^(.*?)(?:\s*-\s*topic)$/i);
+    if (topicMatch) {
+      const trimmed = topicMatch[1].trim();
+      if (trimmed) return trimmed;
+    }
+    if (/^topic$/i.test(name)) return undefined;
+    return name;
+  }
+
+  private static sanitizeAlbumCandidate(candidate: any): string | undefined {
+    if (typeof candidate !== 'string') return undefined;
+    const value = candidate.trim();
+    if (!value) return undefined;
+    const lower = value.toLowerCase();
+    if (lower === 'unknown album') return undefined;
+    if (lower === 'topic') return undefined;
+    if (lower.endsWith('- topic')) {
+      const trimmed = value.replace(/-\s*topic$/i, '').trim();
+      if (trimmed) return trimmed;
+      return undefined;
+    }
+    if (lower.startsWith('playlist ')) return undefined;
+    if (/^uploads from /.test(lower)) return undefined;
+    if (/^mix - /.test(lower)) return undefined;
+    return value;
   }
 
   // Extract a percentage from yt-dlp progress lines.

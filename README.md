@@ -16,6 +16,7 @@ Important: You must have music files available locally for playback. The in-app 
 - REST API integration (WebSocket realtime planned)
 - Listening analytics with top rated tracks, play session stats, and timeline heatmaps
 - In-app toast notifications for rating changes, downloads, and analytics feedback
+- Improved YouTube playlist downloads with cleaned artist/album metadata
 
 ## Architecture
 - `backend/` — Fastify (TypeScript), Prisma ORM, PostgreSQL, maintenance scripts
@@ -110,6 +111,7 @@ Options:
 
 2) In-app YouTube downloader (experimental)
    - The UI exposes a download form, but this path is not fully tested and may fail.
+   - Album and artist metadata from YouTube playlists is automatically sanitized (removes generic "Playlist" or "Topic" suffixes) for cleaner library entries.
    - If you try it, ensure ffmpeg is installed. Expect bugs; contributions are welcome.
 
 ## Usage

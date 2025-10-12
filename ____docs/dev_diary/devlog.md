@@ -2,6 +2,25 @@
 
 This file tracks development progress, features implemented, and issues resolved during the 9layer project development.
 
+## 2025-10-12 - Playlist metadata sanitization and wrap workflow update
+
+**Problem:** YouTube playlist downloads stored albums as `"Topic"` or raw playlist IDs (e.g., `"Playlist OLAK5uy_"`), leaving the download UI and library with incorrect album names.
+
+**Root Cause:** `YTDlpWrapper.parseVideoInfo()` prioritized `playlist_title` metadata without cleaning generic suffixes, and playlist queueing reused unsanitized titles when seeding download jobs. Wrap-up documentation also lacked guidance to refresh the README when workflows changed.
+
+**Solution:**
+1. Expanded `backend/src/utils/yt-dlp.ts` to prefer artist/album fields, strip `"- Topic"` suffixes, and ignore generic playlist placeholders.
+2. Updated `backend/src/routes/download.routes.ts` to sanitize playlist-level album names, reuse cleaned per-track metadata, and avoid embedding playlist IDs in overrides.
+3. Documented the improvements in `README.md` and amended `.claude/commands/wrap.md` so session wrap-ups include README updates alongside the dev log entry.
+
+**Files Modified:**
+- `/backend/src/utils/yt-dlp.ts`
+- `/backend/src/routes/download.routes.ts`
+- `/README.md`
+- `/.claude/commands/wrap.md`
+
+**Outcome:** Playlist downloads now populate accurate artist and album titles across the download UI and library, while contributors follow a clearer wrap workflow that keeps both the dev log and README current.
+
 ## 2025-10-12 - Playback analytics polish and sequential queue mode
 
 **Problem:** Top-tracks analytics still relied on mixed score metrics, sequential playback ignored album order, and timeline tooltips obscured the waveform while recent playback lacked immediate visual feedback.

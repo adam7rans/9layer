@@ -244,47 +244,62 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
 
       // Extract album name with better fallback logic
       // Try: playlist metadata album -> playlist title -> playlist ID from URL -> fallback
-      let albumName = playlistInfo[0]?.album;
+      const sanitizeAlbumName = (name?: string | null): string | undefined => {
+        if (typeof name !== 'string') return undefined;
+        const normalized = name.replace(/\u00A0/g, ' ').trim();
+        if (!normalized) return undefined;
+        const lower = normalized.toLowerCase();
+        if (lower === 'unknown album') return undefined;
+        if (lower === 'topic') return undefined;
+        if (lower.startsWith('playlist ')) return undefined;
+        if (/^ol[a-z0-9_\-]{8,}$/i.test(lower.replace(/[^a-z0-9]/g, ''))) return undefined;
+        if (/^uploads from /.test(lower)) return undefined;
+        if (/^mix - /.test(lower)) return undefined;
+        return normalized;
+      };
+
+      let albumName = sanitizeAlbumName(playlistInfo[0]?.album);
+      let playlistMetadata: { title?: string; description?: string; uploader?: string } | null = null;
 
       if (!albumName) {
-        // Try to extract playlist title from the URL using yt-dlp
         try {
-          const playlistMetadata = await YTDlpWrapper.getPlaylistMetadata(url);
-          albumName = playlistMetadata?.title;
+          playlistMetadata = await YTDlpWrapper.getPlaylistMetadata(url);
         } catch (e) {
           console.log('Could not extract playlist title:', e);
         }
-      }
-
-      if (!albumName) {
-        // Extract playlist ID from URL as fallback
-        const playlistIdMatch = url.match(/[?&]list=([^&]+)/);
-        if (playlistIdMatch) {
-          albumName = `Playlist ${playlistIdMatch[1].slice(0, 8)}`;
+        if (!albumName && playlistMetadata?.title) {
+          albumName = sanitizeAlbumName(playlistMetadata.title);
+        }
+        if (!albumName && playlistMetadata?.uploader) {
+          albumName = sanitizeAlbumName(playlistMetadata.uploader);
         }
       }
 
-      // Final fallback
       if (!albumName) {
         albumName = 'Unknown Album';
       }
 
       console.log(`[PLAYLIST] Detected album name: "${albumName}" for ${playlistInfo.length} tracks`);
 
-      const playlistId = albumName; // Use album name as playlist ID
-      downloadService.startPlaylistTracking(playlistId, albumName, playlistInfo.length);
+      const playlistKey = albumName;
+      downloadService.startPlaylistTracking(playlistKey, albumName, playlistInfo.length);
 
       // Queue downloads for each track in the playlist
       let queuedCount = 0;
       const jobs: Array<{ jobId: string; title?: string; artist?: string; album?: string; youtubeId?: string }> = [];
       for (const track of playlistInfo) {
         try {
+          const sanitizedTrackAlbum = sanitizeAlbumName(track.album);
+          const computedAlbumOverride = albumName !== 'Unknown Album'
+            ? albumName
+            : sanitizedTrackAlbum;
+
           const downloadOptions: DownloadOptions = {
             url: `https://www.youtube.com/watch?v=${track.youtubeId}`,
             quality,
             format,
             extractMetadata: true,
-            albumOverride: albumName // Ensure all tracks use the same album name for completion tracking
+            ...(computedAlbumOverride ? { albumOverride: computedAlbumOverride } : {}),
           };
 
           const res = await downloadService.downloadAudio(downloadOptions.url, downloadOptions);
@@ -292,7 +307,7 @@ export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
             const job: { jobId: string; title?: string; artist?: string; album?: string; youtubeId?: string } = { jobId: res.jobId };
             if (track.title) job.title = track.title;
             if (track.artist) job.artist = track.artist;
-            if (track.album) job.album = track.album;
+            if (sanitizedTrackAlbum) job.album = sanitizedTrackAlbum;
             if (track.youtubeId) job.youtubeId = track.youtubeId;
             jobs.push(job);
           }
