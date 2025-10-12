@@ -2,18 +2,20 @@
 
 # 9layer — Local Music Library + Player (Backend + Frontend)
 
-**Last updated:** 2025-10-11
+**Last updated:** 2025-10-12
 
 9layer is a local-first music player with a TypeScript backend and a modern Next.js frontend. It plays audio files from your machine that are indexed in a PostgreSQL database.
 
 Important: You must have music files available locally for playback. The in-app YouTube download feature is experimental/untested and may not work yet.
 
 ## Features
-- Local library playback with queue, ratings, and auto-advance
+- Local library playback with queue, ratings, sequential/random modes, and auto-advance
 - Search across artists/albums/tracks with missing-audio indicators
 - Modern UI built with Tailwind and shadcn/ui
 - TypeScript/Fastify backend with Prisma + PostgreSQL
 - REST API integration (WebSocket realtime planned)
+- Listening analytics with top rated tracks, play session stats, and timeline heatmaps
+- In-app toast notifications for rating changes, downloads, and analytics feedback
 
 ## Architecture
 - `backend/` — Fastify (TypeScript), Prisma ORM, PostgreSQL, maintenance scripts
@@ -119,7 +121,8 @@ Options:
   - Start backend on 8000 and frontend on 3000 (or the next available open port) individually if you prefer.
 - **Play music**
   - Open the app, use search to locate tracks, and click play.
-  - Player supports previous/next, volume, and auto-advance after a user interaction (browser policy).
+  - Player supports previous/next, volume, sequential album order, and auto-advance after a user interaction (browser policy).
+- Analytics dashboard surfaces top rated tracks, play history, and per-track listening totals.
 
 ## Troubleshooting
 - "No supported source" errors: ensure your file paths are valid, files exist, and the backend returns correct `content-type` (e.g., `audio/mpeg`).
