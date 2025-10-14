@@ -128,6 +128,32 @@ export class PlaybackService extends EventEmitter {
   }
 
   /**
+   * Refresh metadata for a track currently in playback state/queue
+   */
+  async refreshTrack(trackId: string): Promise<void> {
+    const updatedTrack = await this.getTrackById(trackId);
+    if (!updatedTrack) return;
+
+    if (this.currentTrack?.id === trackId) {
+      this.currentTrack = {
+        ...this.currentTrack,
+        ...updatedTrack,
+      };
+    }
+
+    this.playbackQueue = this.playbackQueue.map(track =>
+      track.id === trackId
+        ? {
+            ...track,
+            ...updatedTrack,
+          }
+        : track
+    );
+
+    this.broadcastState();
+  }
+
+  /**
    * Play next track in queue
    */
   async playNext(): Promise<void> {
@@ -402,6 +428,8 @@ export class PlaybackService extends EventEmitter {
 
     if (!track) return null;
 
+    const dbTrack = track as any;
+
     return {
       id: track.id,
       title: track.title,
@@ -412,6 +440,8 @@ export class PlaybackService extends EventEmitter {
       fileSize: track.fileSize,
       youtubeId: track.youtubeId ?? undefined,
       likeability: track.likeability,
+      incorrectMatch: dbTrack.incorrectMatch ?? false,
+      incorrectFlaggedAt: dbTrack.incorrectFlaggedAt ?? null,
       createdAt: track.createdAt,
       updatedAt: track.updatedAt,
     };

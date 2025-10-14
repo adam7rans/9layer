@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PlaybackService } from '../services/playback.service';
 import { SearchService } from '../services/search.service';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { Track } from '../types/api.types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -388,21 +388,26 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
       ]);
 
       // Convert to Track format with artist and album names
-      const formattedTracks: Track[] = tracks.map(track => ({
-        id: track.id,
-        title: track.title,
-        artist: track.artist?.name || 'Unknown Artist',
-        album: track.album?.title || 'Unknown Album',
-        artistId: track.artistId,
-        albumId: track.albumId,
-        duration: track.duration,
-        filePath: track.filePath,
-        fileSize: track.fileSize,
-        youtubeId: track.youtubeId ?? undefined,
-        likeability: track.likeability,
-        createdAt: track.createdAt,
-        updatedAt: track.updatedAt
-      }));
+      const formattedTracks: Track[] = tracks.map(track => {
+        const dbTrack = track as { incorrectMatch?: boolean | null; incorrectFlaggedAt?: Date | null };
+        return {
+          id: track.id,
+          title: track.title,
+          artist: track.artist?.name || 'Unknown Artist',
+          album: track.album?.title || 'Unknown Album',
+          artistId: track.artistId,
+          albumId: track.albumId,
+          duration: track.duration,
+          filePath: track.filePath,
+          fileSize: track.fileSize,
+          youtubeId: track.youtubeId ?? undefined,
+          likeability: track.likeability,
+          incorrectMatch: dbTrack.incorrectMatch ?? false,
+          incorrectFlaggedAt: dbTrack.incorrectFlaggedAt ?? null,
+          createdAt: track.createdAt,
+          updatedAt: track.updatedAt
+        };
+      });
 
       return reply.send({
         success: true,
@@ -412,6 +417,160 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
       });
     } catch (error) {
       console.error('Get tracks error:', error);
+      return reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  });
+
+  /**
+   * Flag track as incorrect match
+   * POST /tracks/:trackId/incorrect
+   */
+  fastify.post('/tracks/:trackId/incorrect', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['trackId'],
+        properties: {
+          trackId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' }
+          }
+        },
+        404: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { trackId } = request.params as { trackId: string };
+
+      const track = await prisma.track.findUnique({ where: { id: trackId } });
+      if (!track) {
+        return reply.code(404).send({ success: false, error: 'Track not found' });
+      }
+
+      const updateData = {
+        incorrectMatch: { set: true },
+        incorrectFlaggedAt: { set: new Date() }
+      } as Prisma.TrackUpdateInput;
+
+      await prisma.track.update({
+        where: { id: trackId },
+        data: updateData
+      });
+
+      const updatedTrack = await prisma.track.findUnique({
+        where: { id: trackId },
+        select: {
+          id: true,
+          title: true,
+          incorrectMatch: true,
+          incorrectFlaggedAt: true
+        }
+      });
+
+      await playbackService.refreshTrack(trackId);
+
+      console.log('[FLAG] Track marked incorrect', {
+        trackId,
+        title: updatedTrack?.title,
+        incorrectMatch: updatedTrack?.incorrectMatch,
+        incorrectFlaggedAt: updatedTrack?.incorrectFlaggedAt,
+      });
+
+      return reply.send({ success: true });
+    } catch (error) {
+      console.error('Flag incorrect track error:', error);
+      return reply.code(500).send({
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal server error'
+      });
+    }
+  });
+
+  /**
+   * Clear incorrect match flag
+   * DELETE /tracks/:trackId/incorrect
+   */
+  fastify.delete('/tracks/:trackId/incorrect', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['trackId'],
+        properties: {
+          trackId: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' }
+          }
+        },
+        404: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            error: { type: 'string' }
+          }
+        }
+      }
+    }
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { trackId } = request.params as { trackId: string };
+
+      const track = await prisma.track.findUnique({ where: { id: trackId } });
+      if (!track) {
+        return reply.code(404).send({ success: false, error: 'Track not found' });
+      }
+
+      const updateData = {
+        incorrectMatch: { set: false },
+        incorrectFlaggedAt: { set: null }
+      } as Prisma.TrackUpdateInput;
+
+      await prisma.track.update({
+        where: { id: trackId },
+        data: updateData
+      });
+
+      const updatedTrack = await prisma.track.findUnique({
+        where: { id: trackId },
+        select: {
+          id: true,
+          title: true,
+          incorrectMatch: true,
+          incorrectFlaggedAt: true
+        }
+      });
+
+      await playbackService.refreshTrack(trackId);
+
+      console.log('[FLAG] Track flag cleared', {
+        trackId,
+        title: updatedTrack?.title,
+        incorrectMatch: updatedTrack?.incorrectMatch,
+        incorrectFlaggedAt: updatedTrack?.incorrectFlaggedAt,
+      });
+
+      return reply.send({ success: true });
+    } catch (error) {
+      console.error('Clear incorrect track flag error:', error);
       return reply.code(500).send({
         success: false,
         error: error instanceof Error ? error.message : 'Internal server error'
@@ -473,6 +632,7 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
       });
 
       const t = results[0];
+      const dbTrack = t as { incorrectMatch?: boolean | null; incorrectFlaggedAt?: Date | null };
       const formatted = {
         id: t.id,
         title: t.title,
@@ -485,6 +645,8 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
         fileSize: t.fileSize,
         youtubeId: t.youtubeId ?? undefined,
         likeability: t.likeability,
+        incorrectMatch: dbTrack.incorrectMatch ?? false,
+        incorrectFlaggedAt: dbTrack.incorrectFlaggedAt ?? null,
         createdAt: t.createdAt,
         updatedAt: t.updatedAt
       };
@@ -992,7 +1154,9 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
                     filePath: { type: 'string' },
                     fileSize: { type: 'number' },
                     youtubeId: { type: 'string' },
-                    likeability: { type: 'number' }
+                    likeability: { type: 'number' },
+                    incorrectMatch: { type: 'boolean' },
+                    incorrectFlaggedAt: { type: 'string', nullable: true }
                   }
                 },
                 isPlaying: { type: 'boolean' },
@@ -1006,7 +1170,9 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
                       id: { type: 'string' },
                       title: { type: 'string' },
                       artist: { type: 'string' },
-                      album: { type: 'string' }
+                      album: { type: 'string' },
+                      incorrectMatch: { type: 'boolean' },
+                      incorrectFlaggedAt: { type: 'string', nullable: true }
                     }
                   }
                 },
@@ -1034,6 +1200,7 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
         });
 
         if (fullTrack) {
+          const dbTrack = fullTrack as { incorrectMatch?: boolean | null; incorrectFlaggedAt?: Date | null };
           currentTrackWithNames = {
             id: fullTrack.id,
             title: fullTrack.title,
@@ -1045,7 +1212,9 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
             filePath: fullTrack.filePath,
             fileSize: fullTrack.fileSize,
             youtubeId: fullTrack.youtubeId,
-            likeability: fullTrack.likeability
+            likeability: fullTrack.likeability,
+            incorrectMatch: dbTrack.incorrectMatch ?? false,
+            incorrectFlaggedAt: dbTrack.incorrectFlaggedAt ?? null,
           };
         }
       }
@@ -1061,11 +1230,14 @@ export async function playbackRoutes(fastify: FastifyInstance): Promise<void> {
             }
           });
 
+          const dbTrack = fullTrack as { incorrectMatch?: boolean | null; incorrectFlaggedAt?: Date | null };
           return {
             id: track.id,
             title: track.title,
             artist: fullTrack?.artist?.name || 'Unknown Artist',
-            album: fullTrack?.album?.title || 'Unknown Album'
+            album: fullTrack?.album?.title || 'Unknown Album',
+            incorrectMatch: dbTrack?.incorrectMatch ?? false,
+            incorrectFlaggedAt: dbTrack?.incorrectFlaggedAt ?? null,
           };
         })
       );

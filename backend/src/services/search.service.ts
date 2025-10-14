@@ -33,6 +33,8 @@ export interface SearchTrack {
   fileSize: number | null;
   youtubeId: string | null;
   likeability: number;
+  incorrectMatch: boolean;
+  incorrectFlaggedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -258,7 +260,9 @@ export class SearchService {
         likeability: track.likeability,
         createdAt: track.createdAt,
         updatedAt: track.updatedAt,
-        youtubeId: track.youtubeId ?? null
+        youtubeId: track.youtubeId ?? null,
+        incorrectMatch: track.incorrectMatch,
+        incorrectFlaggedAt: track.incorrectFlaggedAt ?? null
       };
 
       return result;
@@ -320,7 +324,9 @@ export class SearchService {
         likeability: track.likeability,
         createdAt: track.createdAt,
         updatedAt: track.updatedAt,
-        youtubeId: track.youtubeId ?? null
+        youtubeId: track.youtubeId ?? null,
+        incorrectMatch: track.incorrectMatch,
+        incorrectFlaggedAt: track.incorrectFlaggedAt ?? null
       };
 
       return result;
@@ -349,6 +355,8 @@ export class SearchService {
       fileSize: track.fileSize,
       youtubeId: track.youtubeId ?? null,
       likeability: track.likeability,
+      incorrectMatch: track.incorrectMatch,
+      incorrectFlaggedAt: track.incorrectFlaggedAt ?? null,
       createdAt: track.createdAt,
       updatedAt: track.updatedAt
     }));

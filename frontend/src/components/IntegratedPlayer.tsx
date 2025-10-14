@@ -9,6 +9,7 @@ import SearchResults, { SearchArtist, SearchAlbum } from './SearchResults';
 import HeatmapTimeline from './HeatmapTimeline';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import IncorrectBadge from './IncorrectBadge';
 import {
   PlayIcon,
   PauseIcon,
@@ -21,7 +22,9 @@ import {
   PlusIcon,
   MinusIcon,
   ChartBarIcon,
-  ArrowsRightLeftIcon
+  ArrowsRightLeftIcon,
+  FlagIcon,
+  NoSymbolIcon
 } from '@heroicons/react/24/solid';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -89,8 +92,57 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const initRef = useRef(false);
   const isUserAdjustingVolume = useRef(false);
+  const isPlayingRef = useRef(false);
   const downloadToastIds = useRef(new Set<string>());
   const albumToastIds = useRef(new Set<number>());
+
+  const mergePlaybackState = useCallback((state: PlaybackState) => {
+    setPlaybackState(prev => {
+      const mergedCurrentTrack = state.currentTrack
+        ? {
+            ...prev.currentTrack,
+            ...state.currentTrack,
+            incorrectMatch: state.currentTrack.incorrectMatch ?? prev.currentTrack?.incorrectMatch ?? false,
+            incorrectFlaggedAt: state.currentTrack.incorrectFlaggedAt ?? prev.currentTrack?.incorrectFlaggedAt ?? null,
+          }
+        : state.currentTrack;
+
+      const mergedQueue = Array.isArray(state.queue)
+        ? state.queue.map((queueItem) => {
+            if (!queueItem) return queueItem;
+            const previousById = prev.queue.find(q => q.id === queueItem.id) || null;
+            return {
+              ...previousById,
+              ...queueItem,
+              incorrectMatch: queueItem.incorrectMatch ?? previousById?.incorrectMatch ?? false,
+              incorrectFlaggedAt: queueItem.incorrectFlaggedAt ?? previousById?.incorrectFlaggedAt ?? null,
+            };
+          })
+        : state.queue ?? [];
+
+      const normalizedVolume = state.volume > 1 ? state.volume / 100 : state.volume;
+
+      return {
+        ...prev,
+        ...state,
+        currentTrack: mergedCurrentTrack,
+        queue: mergedQueue,
+        volume: normalizedVolume
+      };
+    });
+
+    setTracks(prevTracks => {
+      if (!state.currentTrack) return prevTracks;
+      const { id, incorrectMatch, incorrectFlaggedAt } = state.currentTrack;
+      let updated = prevTracks;
+      updated = prevTracks.map(track => track.id === id ? {
+        ...track,
+        incorrectMatch: incorrectMatch ?? track.incorrectMatch ?? false,
+        incorrectFlaggedAt: incorrectFlaggedAt ?? track.incorrectFlaggedAt ?? null,
+      } : track);
+      return updated;
+    });
+  }, []);
   
   // Analytics hook
   const analytics = useAnalytics();
@@ -266,6 +318,8 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         likeability: albumTrack.likeability,
         artistId: albumTrack.artistId,
         albumId: albumTrack.albumId,
+        incorrectMatch: albumTrack.incorrectMatch ?? false,
+        incorrectFlaggedAt: albumTrack.incorrectFlaggedAt ?? null,
       }));
 
       const currentFromAlbum = albumTracks.find(t => t.id === track.id) || track;
@@ -345,7 +399,9 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           youtubeId: track.youtubeId,
           likeability: track.likeability,
           createdAt: new Date(track.createdAt),
-          updatedAt: new Date(track.updatedAt)
+          updatedAt: new Date(track.updatedAt),
+          incorrectMatch: track.incorrectMatch ?? false,
+          incorrectFlaggedAt: track.incorrectFlaggedAt ?? null,
         }));
 
         // Switch to sequential mode for artist playback
@@ -400,7 +456,9 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           youtubeId: track.youtubeId,
           likeability: track.likeability,
           createdAt: new Date(track.createdAt),
-          updatedAt: new Date(track.updatedAt)
+          updatedAt: new Date(track.updatedAt),
+          incorrectMatch: track.incorrectMatch ?? false,
+          incorrectFlaggedAt: track.incorrectFlaggedAt ?? null,
         }));
 
         // Switch to sequential mode for album playback
@@ -522,7 +580,11 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         if (previousTrack) {
           const response = await api.playTrack(previousTrack.id);
           if (response.success) {
-            setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: previousTrack, queue: queue }));
+            if (response.data) {
+              mergePlaybackState(response.data);
+            } else {
+              setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: previousTrack, queue: queue }));
+            }
             if (previousTrack.id) {
               await analytics.startListeningSession(previousTrack.id);
               setAnalyticsRefreshTrigger(prev => prev + 1);
@@ -539,7 +601,11 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         setError(null);
         const response = await api.playTrack(t.id);
         if (response.success) {
-          setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: t }));
+          if (response.data) {
+            mergePlaybackState(response.data);
+          } else {
+            setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: t }));
+          }
           if (t.id) {
             await analytics.startListeningSession(t.id);
             setAnalyticsRefreshTrigger(prev => prev + 1);
@@ -577,7 +643,11 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
             setError(null);
             const response = await api.playTrack(nextTrack.id);
             if (response.success) {
-              setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: nextTrack, queue }));
+              if (response.data) {
+                mergePlaybackState(response.data);
+              } else {
+                setPlaybackState(prev => ({ ...prev, isPlaying: true, currentTrack: nextTrack, queue }));
+              }
               if (nextTrack.id) {
                 await analytics.startListeningSession(nextTrack.id);
                 setAnalyticsRefreshTrigger(prev => prev + 1);
@@ -634,13 +704,26 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
 
   // Poll for playback state updates
   useEffect(() => {
+    let pollCount = 0;
     const pollPlaybackState = async () => {
       try {
         const response = await api.getPlaybackState();
         
         if (response.success && response.data) {
           const state = response.data;
-          setPlaybackState(state);
+          
+          // Log first 3 polls to see flag state on page load
+          if (pollCount < 3 && state.currentTrack) {
+            console.log(`[POLL ${pollCount}] Current track:`, {
+              id: state.currentTrack.id,
+              title: state.currentTrack.title,
+              incorrectMatch: state.currentTrack.incorrectMatch,
+              incorrectFlaggedAt: state.currentTrack.incorrectFlaggedAt,
+            });
+            pollCount++;
+          }
+          
+          mergePlaybackState(state);
 
           // Sync HTML5 audio element with backend state
           if (audioRef.current && state.currentTrack) {
@@ -649,39 +732,48 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
             if (localPlayback) {
               // Update audio source if different
               if (audioRef.current.src !== audioUrl) {
+                console.log('[AUDIO] Changing track source:', {
+                  from: audioRef.current.src,
+                  to: audioUrl,
+                  trackId: state.currentTrack.id
+                });
                 audioRef.current.src = audioUrl;
                 audioRef.current.load();
+                isPlayingRef.current = false; // Reset flag when track changes
               }
             
               // Sync playback state - only play if user has interacted
-              if (state.isPlaying && audioRef.current.paused) {
+              if (state.isPlaying && audioRef.current.paused && !isPlayingRef.current) {
                 if (hasUserInteracted) {
+                  console.log('[AUDIO] Attempting to play audio');
+                  isPlayingRef.current = true;
                   audioRef.current.play().catch(error => {
                     console.error('Audio play failed:', error);
+                    isPlayingRef.current = false;
                     setShowAutoplayHelp(true);
                   });
                 } else {
                   setShowAutoplayHelp(true);
                 }
               } else if (!state.isPlaying && !audioRef.current.paused) {
+                console.log('[AUDIO] Pausing audio');
+                isPlayingRef.current = false;
                 audioRef.current.pause();
               }
             
               // Sync volume (backend returns 0-100, audio element expects 0-1)
               // But only if user is not currently adjusting the volume slider
               if (!isUserAdjustingVolume.current) {
-                // Ensure volume is always normalized to 0-1 range
-                const normalizedVolume = state.volume > 1 ? state.volume / 100 : state.volume;
-                const clampedVolume = Math.max(0, Math.min(1, normalizedVolume));
+                const clampedVolume = Math.max(0, Math.min(1, state.volume > 1 ? state.volume / 100 : state.volume));
                 
                 audioRef.current.volume = clampedVolume;
                 
                 // Update local state to match backend (avoid fighting with the slider)
-                setPlaybackState(prev => ({ 
-                  ...prev, 
+                setPlaybackState(prev => ({
+                  ...prev,
                   volume: clampedVolume
                 }));
-                      }
+              }
             
               // Seek if needed (basic sync)
               if (Math.abs((audioRef.current.currentTime || 0) - (state.position || 0)) > 2) {
@@ -707,7 +799,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     pollPlaybackState(); // Initial call
 
     return () => clearInterval(interval);
-  }, [hasUserInteracted, localPlayback]);
+  }, [hasUserInteracted, localPlayback, mergePlaybackState]);
 
   // Auto-advance: when the audio element ends, play a new random track
   useEffect(() => {
@@ -736,22 +828,24 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       const response = await api.playTrack(trackId);
       
       if (response.success) {
-        const track = tracks.find(t => t.id === trackId);
-        
-        // Update local state immediately for better UX
-        setPlaybackState(prev => ({
-          ...prev,
-          isPlaying: true,
-          currentTrack: track || prev.currentTrack
-        }));
-        
-        // Start analytics session for the new track
-        if (track?.id) {
-          await analytics.startListeningSession(track.id);
-          // Trigger analytics refresh for Recently Played and Full History
+        if (response.data) {
+          mergePlaybackState(response.data);
+        } else {
+          const track = tracks.find(t => t.id === trackId);
+          setPlaybackState(prev => ({
+            ...prev,
+            isPlaying: true,
+            currentTrack: track || prev.currentTrack
+          }));
+        }
+
+        const trackForAnalytics = tracks.find(t => t.id === trackId) || response.data?.currentTrack;
+
+        if (trackForAnalytics?.id) {
+          await analytics.startListeningSession(trackForAnalytics.id);
           setAnalyticsRefreshTrigger(prev => prev + 1);
           if (playbackMode === 'sequential') {
-            await prepareSequentialMode(track || playbackState.currentTrack);
+            await prepareSequentialMode(trackForAnalytics as Track);
           }
         }
         
@@ -762,7 +856,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
       console.error('Failed to play track:', error);
       setError('Failed to play track');
     }
-  }, [tracks, analytics]);
+  }, [tracks, analytics, mergePlaybackState, playbackMode, prepareSequentialMode]);
 
   const handlePause = useCallback(async () => {
     try {
@@ -817,20 +911,153 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     console.log('Seeking to:', newPosition);
   }, [playbackState.currentTrack]);
 
+  const handleFlagIncorrect = useCallback(async () => {
+    const trackId = playbackState.currentTrack?.id;
+    if (!trackId) return;
+
+    console.log('[FRONTEND FLAG] Flagging track:', {
+      trackId,
+      title: playbackState.currentTrack?.title,
+      currentState: {
+        incorrectMatch: playbackState.currentTrack?.incorrectMatch,
+        incorrectFlaggedAt: playbackState.currentTrack?.incorrectFlaggedAt,
+      }
+    });
+
+    try {
+      const result = await api.flagTrackIncorrect(trackId);
+      console.log('[FRONTEND FLAG] API response:', result);
+      if (result.success) {
+        toast.success('Marked as incorrect', {
+          description: [playbackState.currentTrack?.title, playbackState.currentTrack?.artist].filter(Boolean).join(' — ') || undefined,
+        });
+        const flaggedAt = new Date().toISOString();
+        setPlaybackState(prev => {
+          if (!prev.currentTrack || prev.currentTrack.id !== trackId) return prev;
+          const updatedTrack = {
+            ...prev.currentTrack,
+            incorrectMatch: true,
+            incorrectFlaggedAt: flaggedAt
+          };
+          const updatedQueue = prev.queue.map(track => track.id === trackId ? {
+            ...track,
+            incorrectMatch: true,
+            incorrectFlaggedAt: flaggedAt
+          } : track);
+          return {
+            ...prev,
+            currentTrack: updatedTrack,
+            queue: updatedQueue
+          };
+        });
+        setTracks(prev => prev.map(track => track.id === trackId ? {
+          ...track,
+          incorrectMatch: true,
+          incorrectFlaggedAt: flaggedAt
+        } : track));
+
+        try {
+          const stateResponse = await api.getPlaybackState();
+          console.log('[FRONTEND FLAG] Refreshed playback state:', stateResponse.data?.currentTrack);
+          if (stateResponse.success && stateResponse.data) {
+            mergePlaybackState(stateResponse.data);
+          }
+        } catch (err) {
+          console.warn('Failed to refresh playback state after flagging:', err);
+        }
+      } else {
+        toast.error(result.error || 'Failed to flag track');
+      }
+    } catch (error) {
+      console.error('Flag incorrect track failed:', error);
+      toast.error('Failed to flag track');
+    }
+  }, [playbackState.currentTrack, setPlaybackState]);
+
+  const handleClearIncorrect = useCallback(async () => {
+    const trackId = playbackState.currentTrack?.id;
+    if (!trackId) return;
+
+    console.log('[FRONTEND FLAG] Clearing flag for track:', {
+      trackId,
+      title: playbackState.currentTrack?.title,
+      currentState: {
+        incorrectMatch: playbackState.currentTrack?.incorrectMatch,
+        incorrectFlaggedAt: playbackState.currentTrack?.incorrectFlaggedAt,
+      }
+    });
+
+    try {
+      const result = await api.clearTrackIncorrect(trackId);
+      console.log('[FRONTEND FLAG] Clear API response:', result);
+      if (result.success) {
+        toast.success('Flag cleared', {
+          description: [playbackState.currentTrack?.title, playbackState.currentTrack?.artist].filter(Boolean).join(' — ') || undefined,
+        });
+        setPlaybackState(prev => {
+          if (!prev.currentTrack || prev.currentTrack.id !== trackId) return prev;
+          const updatedTrack = {
+            ...prev.currentTrack,
+            incorrectMatch: false,
+            incorrectFlaggedAt: null
+          };
+          const updatedQueue = prev.queue.map(track => track.id === trackId ? {
+            ...track,
+            incorrectMatch: false,
+            incorrectFlaggedAt: null
+          } : track);
+          return {
+            ...prev,
+            currentTrack: updatedTrack,
+            queue: updatedQueue
+          };
+        });
+        setTracks(prev => prev.map(track => track.id === trackId ? {
+          ...track,
+          incorrectMatch: false,
+          incorrectFlaggedAt: null
+        } : track));
+
+        try {
+          const stateResponse = await api.getPlaybackState();
+          console.log('[FRONTEND FLAG] Refreshed playback state after clear:', stateResponse.data?.currentTrack);
+          if (stateResponse.success && stateResponse.data) {
+            mergePlaybackState(stateResponse.data);
+          }
+        } catch (err) {
+          console.warn('Failed to refresh playback state after clearing flag:', err);
+        }
+      } else {
+        toast.error(result.error || 'Failed to clear flag');
+      }
+    } catch (error) {
+      console.error('Clear incorrect track failed:', error);
+      toast.error('Failed to clear flag');
+    }
+  }, [playbackState.currentTrack, setPlaybackState]);
+
   // Add audio event listeners for analytics tracking
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    
+    // Debug: check for multiple audio elements
+    const audioElements = document.querySelectorAll('audio');
+    if (audioElements.length > 1) {
+      console.error('[AUDIO DEBUG] Multiple audio elements detected:', audioElements.length);
+    }
 
     const handleTimeUpdate = () => {
       analytics.handleTimeUpdate(audio.currentTime);
     };
 
     const handlePlay = () => {
+      isPlayingRef.current = true;
       analytics.handlePlay();
     };
 
     const handlePause = () => {
+      isPlayingRef.current = false;
       analytics.handlePause();
     };
 
@@ -1435,7 +1662,12 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           <div className="pb-3 px-4">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-8">
               <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
-                <div className="font-medium text-sm truncate w-full">{playbackState.currentTrack.title}</div>
+                <div className="flex items-center gap-2 w-full justify-center md:justify-start">
+                  <span className="font-medium text-sm truncate">{playbackState.currentTrack.title}</span>
+                  {playbackState.currentTrack.incorrectMatch && (
+                    <IncorrectBadge className="shrink-0" />
+                  )}
+                </div>
                 <div className="text-xs text-gray-400 truncate w-full">
                   {playbackState.currentTrack.artist}
                   {playbackState.currentTrack.album && ` • ${playbackState.currentTrack.album.replace(/^Album - /, '')}`}
@@ -1469,6 +1701,23 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                     title="Decrease rating"
                   >
                     <MinusIcon className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    onClick={playbackState.currentTrack?.incorrectMatch ? handleClearIncorrect : handleFlagIncorrect}
+                    className="h-[50px] w-[50px] p-0"
+                    variant={playbackState.currentTrack?.incorrectMatch ? 'secondary' : 'outline'}
+                    disabled={!playbackState.currentTrack}
+                    title={playbackState.currentTrack?.incorrectMatch ? 'Clear incorrect flag' : 'Mark track metadata as incorrect'}
+                    aria-pressed={playbackState.currentTrack?.incorrectMatch ?? false}
+                  >
+                    {playbackState.currentTrack?.incorrectMatch ? (
+                      <span className="relative inline-flex items-center justify-center">
+                        <FlagIcon className="w-5 h-5 opacity-70" />
+                        <NoSymbolIcon className="absolute w-5 h-5 text-amber-300" />
+                      </span>
+                    ) : (
+                      <FlagIcon className="w-5 h-5" />
+                    )}
                   </Button>
                 </div>
                 
@@ -1564,7 +1813,10 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
                 {playbackState.queue.map((track, index) => (
                   <div key={`${track.youtubeId}-${index}`} className="flex items-center justify-between p-2 bg-gray-800 rounded">
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate">{track.title}</div>
+                      <div className="font-medium truncate flex items-center gap-2">
+                        <span className="truncate">{track.title}</span>
+                        {track.incorrectMatch && <IncorrectBadge className="shrink-0" />}
+                      </div>
                       <div className="text-sm text-gray-400 truncate">{track.artist}</div>
                     </div>
                   </div>

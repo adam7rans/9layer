@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/solid';
 // import { cn } from '@/lib/utils';
 import PlaybackTimeline from './PlaybackTimeline';
+import IncorrectBadge from './IncorrectBadge';
 
 interface AnalyticsData {
   topTracks: any[];
@@ -207,6 +208,8 @@ const AnalyticsDashboard = ({
     const trackDetailedData = detailedData.get(track.id || track.youtubeId);
     const isLoadingDetailed = loadingDetailedData.has(track.id || track.youtubeId);
     
+    const isIncorrect = Boolean(track.incorrectMatch || track.track?.incorrectMatch);
+
     return (
       <div key={track.id || track.youtubeId} className="bg-gray-800 rounded overflow-hidden">
         <div className="flex items-center gap-3 p-3 hover:bg-gray-700 transition-colors">
@@ -225,7 +228,10 @@ const AnalyticsDashboard = ({
           
           {/* Track Info */}
           <div className="min-w-0 flex-1">
-            <div className="font-medium truncate text-sm">{track.title}</div>
+            <div className="font-medium truncate text-sm flex items-center gap-2">
+              <span className="truncate">{track.title}</span>
+              {isIncorrect && <IncorrectBadge className="shrink-0" />}
+            </div>
             <div className="text-xs text-gray-400 truncate">{track.artist?.name || track.artist}</div>
             {showExtraInfo && track.analytics && (
               <div className="text-xs text-gray-500 mt-1">
@@ -519,7 +525,10 @@ const AnalyticsDashboard = ({
                       <PlayIcon className="w-4 h-4" />
                     </Button>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate text-sm">{session.track.title}</div>
+                      <div className="font-medium truncate text-sm flex items-center gap-2">
+                        <span className="truncate">{session.track.title}</span>
+                        {session.track.incorrectMatch && <IncorrectBadge className="shrink-0" />}
+                      </div>
                       <div className="text-xs text-gray-400 truncate">{session.track.artist?.name || session.track.artist}</div>
                       <div className="text-xs text-gray-500 mt-1">
                         {formatDate(session.createdAt)} | 

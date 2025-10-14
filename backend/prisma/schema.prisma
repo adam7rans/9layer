@@ -46,6 +46,8 @@ model Track {
   fileSize    Int?
   youtubeId   String?  @unique
   likeability Int      @default(0)
+  incorrectMatch    Boolean  @default(false)
+  incorrectFlaggedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

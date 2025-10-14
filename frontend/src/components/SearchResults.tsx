@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { API_BASE } from '@/lib/api';
+import IncorrectBadge from './IncorrectBadge';
 import {
   PlayIcon,
   PauseIcon,
@@ -46,6 +47,8 @@ export interface SearchTrack {
   fileSize: number | null;
   youtubeId?: string;
   likeability: number;
+  incorrectMatch?: boolean;
+  incorrectFlaggedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -402,6 +405,9 @@ const SearchResults = ({
                             <div className={`font-medium truncate text-sm ${missingAudio ? 'text-red-200' : ''}`}>
                               {track.title}
                             </div>
+                            {track.incorrectMatch && (
+                              <IncorrectBadge className="shrink-0" />
+                            )}
                             {missingAudio && (
                               <span className="text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full bg-red-900/70 border border-red-700 text-red-200/90">
                                 Audio missing

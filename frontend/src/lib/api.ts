@@ -22,6 +22,8 @@ export interface Track {
   likeability?: number;
   artistId?: string;
   albumId?: string;
+  incorrectMatch?: boolean;
+  incorrectFlaggedAt?: string | Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -94,10 +96,12 @@ export interface SearchTrack {
   artistId: string;
   albumId: string;
   duration: number;
-  filePath: string;
-  fileSize: number;
+  filePath: string | null;
+  fileSize: number | null;
   youtubeId?: string;
   likeability: number;
+  incorrectMatch?: boolean;
+  incorrectFlaggedAt?: string | Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -301,6 +305,42 @@ export const api = {
       return { success: false, error: data.error || 'Failed to get playback state' };
     } catch (error) {
       return { success: false, error: 'Failed to get playback state' };
+    }
+  },
+
+  flagTrackIncorrect: async (trackId: string): Promise<ApiResponse<void>> => {
+    try {
+      console.log('[API] Calling POST /tracks/:trackId/incorrect', { trackId, url: `${API_BASE}/tracks/${trackId}/incorrect` });
+      const response = await fetch(`${API_BASE}/tracks/${trackId}/incorrect`, {
+        method: 'POST'
+      });
+      const data = await response.json();
+      console.log('[API] Flag response:', { status: response.status, data });
+      if (data.success) {
+        return { success: true };
+      }
+      return { success: false, error: data.error || 'Failed to flag track' };
+    } catch (error) {
+      console.error('[API] Flag track error:', error);
+      return { success: false, error: 'Failed to flag track' };
+    }
+  },
+
+  clearTrackIncorrect: async (trackId: string): Promise<ApiResponse<void>> => {
+    try {
+      console.log('[API] Calling DELETE /tracks/:trackId/incorrect', { trackId, url: `${API_BASE}/tracks/${trackId}/incorrect` });
+      const response = await fetch(`${API_BASE}/tracks/${trackId}/incorrect`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+      console.log('[API] Clear flag response:', { status: response.status, data });
+      if (data.success) {
+        return { success: true };
+      }
+      return { success: false, error: data.error || 'Failed to clear flag' };
+    } catch (error) {
+      console.error('[API] Clear flag error:', error);
+      return { success: false, error: 'Failed to clear flag' };
     }
   },
   

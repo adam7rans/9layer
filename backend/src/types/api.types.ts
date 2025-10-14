@@ -79,10 +79,12 @@ export interface Track {
   artistId: string;
   albumId: string;
   duration: number;
-  filePath: string;
-  fileSize: number;
+  filePath: string | null;
+  fileSize: number | null;
   youtubeId?: string | undefined;
   likeability: number;
+  incorrectMatch?: boolean;
+  incorrectFlaggedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

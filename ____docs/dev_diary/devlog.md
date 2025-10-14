@@ -2,6 +2,35 @@
 
 This file tracks development progress, features implemented, and issues resolved during the 9layer project development.
 
+## 2025-10-14 - Track incorrect flag persistence and audio echo fix
+
+**Problem:** The "incorrect match" flag feature was not persisting across page refreshes. When a user flagged a track as having incorrect metadata, the flag would appear momentarily but disappear after refreshing the page. Additionally, audio playback had an echo effect where tracks sounded like they were playing twice with a slight delay.
+
+**Root Cause:** 
+1. **Flag Persistence**: The backend was correctly updating the database with `incorrectMatch` and `incorrectFlaggedAt` fields, and the playback service was fetching them, but Fastify's response schema validation was stripping these fields from the `/playback/state` API response before sending to the frontend. The schema didn't include these fields, so they were silently removed.
+2. **Audio Echo**: The polling interval (running every 1 second) was repeatedly calling `audioRef.current.play()` whenever it detected the audio element was paused but the backend state said it should be playing. This caused multiple overlapping play attempts, creating an echo effect.
+
+**Solution:**
+1. Added comprehensive logging throughout the flag flow to trace data from database → backend → frontend:
+   - Backend: Log track flag updates with full field values after database writes
+   - Frontend: Log API calls, responses, and state merges during flag operations
+   - Polling: Log first 3 polls on page load to verify flag data is received
+2. Identified the Fastify schema issue through console logs showing `incorrectMatch: undefined`
+3. Updated `/backend/src/routes/playback.routes.ts` to include `incorrectMatch` and `incorrectFlaggedAt` in both the `currentTrack` and `queue` response schemas
+4. Fixed audio echo by adding `isPlayingRef` guard to prevent multiple simultaneous play attempts:
+   - Track play state with a ref that persists across renders
+   - Only call `.play()` if not already attempting to play
+   - Reset the flag when track changes or audio events fire
+   - Added event listeners to sync the ref with actual audio element state
+
+**Files Modified:**
+- `/backend/src/routes/playback.routes.ts` - Added flag fields to Fastify response schema
+- `/backend/src/services/playback.service.ts` - Added `refreshTrack()` method to sync playback state with database
+- `/frontend/src/components/IntegratedPlayer.tsx` - Added `isPlayingRef` guard, comprehensive logging, and improved state merging
+- `/frontend/src/lib/api.ts` - Added logging to flag API calls
+
+**Outcome:** Track incorrect flags now persist correctly across page refreshes and navigation. The flag badge and button state remain visible after reload. Audio playback no longer has echo effects, with proper play/pause state management preventing duplicate playback attempts.
+
 ## 2025-10-12 - Playlist metadata sanitization and wrap workflow update
 
 **Problem:** YouTube playlist downloads stored albums as `"Topic"` or raw playlist IDs (e.g., `"Playlist OLAK5uy_"`), leaving the download UI and library with incorrect album names.
