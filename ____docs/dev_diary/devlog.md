@@ -2,6 +2,22 @@
 
 This file tracks development progress, features implemented, and issues resolved during the 9layer project development.
 
+## 2025-10-14 - Download UI resets and long-track verification
+
+**Problem:** Single-track downloads left the "Download" button stuck in the loading state, and long-form audio (1+ hour) appeared to stall at ~33% despite the backend completing.
+
+**Root Cause:** The frontend's `handleDownload()` in `frontend/src/components/IntegratedPlayer.tsx` set `isDownloading` to `true` but never reverted to `false`, so the UI never surfaced completion toasts or re-enabled the button. Progress polling also assumed an active job existed even after SSE reported completion, so the flag stayed latched. The long-track download actually succeeded—yt-dlp emitted a completion event—but the stale UI state obscured that success.
+
+**Solution:**
+1. Reset `isDownloading` whenever playlist/single download requests fail or finish, and after SSE progress indicates no active jobs remain.
+2. Confirm backend completion by querying `tracks.youtubeId = 'O8Rpp_87J_I'` and validating the saved file path.
+3. Manually re-test both short and hour-long YouTube Music downloads to verify the UI now shows the success toast and accepts new URLs immediately.
+
+**Files Modified:**
+- `/frontend/src/components/IntegratedPlayer.tsx`
+
+**Outcome:** Download jobs now transition cleanly: the progress bar reaches 100%, a "Song download complete" toast appears, and the button resets for subsequent URLs. Long-form tracks such as Brian Eno's "Neroli" are confirmed to download and catalog correctly.
+
 ## 2025-10-14 - Track incorrect flag persistence and audio echo fix
 
 **Problem:** The "incorrect match" flag feature was not persisting across page refreshes. When a user flagged a track as having incorrect metadata, the flag would appear momentarily but disappear after refreshing the page. Additionally, audio playback had an echo effect where tracks sounded like they were playing twice with a slight delay.

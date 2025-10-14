@@ -1216,6 +1216,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           }
         } else {
           setError(res.error || 'Failed to start playlist download');
+          setIsDownloading(false);
         }
       } else {
         const res = await api.downloadAudio(url);
@@ -1235,6 +1236,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
           ]);
         } else if (!res.success) {
           setError(res.error || 'Failed to start download');
+          setIsDownloading(false);
         }
       }
 
@@ -1243,6 +1245,7 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
     } catch (error) {
       console.error('Download failed:', error);
       setError('Download failed');
+      setIsDownloading(false);
     }
   }, [downloadUrl]);
 
@@ -1475,6 +1478,10 @@ const IntegratedPlayer = ({ className }: IntegratedPlayerProps) => {
         });
       }
     });
+    const hasActiveJob = downloadJobs.some(job => job.status === 'pending' || job.status === 'downloading' || job.retrying);
+    if (!hasActiveJob) {
+      setIsDownloading(false);
+    }
   }, [downloadJobs]);
 
   useEffect(() => {
