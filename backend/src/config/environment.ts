@@ -10,6 +10,14 @@ const envSchema = z.object({
   MAX_CONCURRENT_DOWNLOADS: z.coerce.number().int().positive().default(3),
   WEBSOCKET_HEARTBEAT_INTERVAL: z.coerce.number().int().positive().default(30000),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  ANALYSIS_PYTHON_BIN: z.string().default('python3'),
+  ANALYSIS_CLI_PATH: z.string().default('analysis/cli.py'),
+  ANALYSIS_BATCH_SIZE: z.coerce.number().int().positive().default(16),
+  ANALYSIS_MAX_WORKERS: z.coerce.number().int().positive().default(4),
+  ANALYSIS_FORCE_REANALYZE: z.coerce.boolean().default(false),
+  ANALYSIS_ENABLE_EMBEDDINGS: z.coerce.boolean().default(true),
+  ANALYSIS_MODEL_DIR: z.string().optional(),
+  ANALYSIS_CACHE_DIR: z.string().default('analysis-cache'),
 });
 
 // Parse and validate environment variables

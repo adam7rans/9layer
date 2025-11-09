@@ -10,7 +10,11 @@ import { DownloadOptions } from '../types/api.types';
 export async function downloadRoutes(fastify: FastifyInstance): Promise<void> {
   // Get the Prisma client and DownloadService from the app
   const prisma = fastify.prisma as PrismaClient;
-  const downloadService = new DownloadService(prisma);
+  const downloadService = new DownloadService(prisma, fastify.audioAnalysisService);
+
+  fastify.addHook('onClose', async () => {
+    downloadService.destroy();
+  });
 
   /**
    * Download audio from YouTube URL

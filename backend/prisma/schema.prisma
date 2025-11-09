@@ -58,8 +58,48 @@ model Track {
   listeningSessions ListeningSession[]
   trackRatings      TrackRating[]
   playbackSegments  PlaybackSegment[]
+  analysis         TrackAudioAnalysis?
+  analysisFailures TrackAnalysisFailure[]
 
   @@map("tracks")
+}
+
+model TrackAudioAnalysis {
+  id                 String   @id @default(cuid())
+  trackId            String   @unique
+  analysisVersion    String
+  analyzedAt         DateTime @default(now())
+  tempoBpm           Float?
+  energyLevel        Float?
+  genres             String[]
+  moods              String[]
+  instrumentation    Json?
+  instrumentationCount Int?
+  compositionYear    Int?
+  compositionDecade  Int?
+  keywords           String[]
+  summary            String?
+  embedding          Json?
+  payload            Json?
+
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@map("track_audio_analysis")
+}
+
+model TrackAnalysisFailure {
+  id         String   @id @default(cuid())
+  trackId    String
+  filePath   String?
+  error      String
+  retryCount Int      @default(0)
+  resolved   Boolean  @default(false)
+  occurredAt DateTime @default(now())
+
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([resolved])
+  @@map("track_analysis_failures")
 }
 
 model MissingTrack {

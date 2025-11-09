@@ -21,10 +21,9 @@ export interface DownloadResult {
   jobId?: string;
   trackId?: string;
   filePath?: string;
-  metadata?: TrackMetadata;
+  metadata?: any;
   error?: string;
   errorCode?: string;
-  duration?: number;
 }
 
 export interface DownloadProgress {

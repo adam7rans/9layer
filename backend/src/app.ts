@@ -8,12 +8,15 @@ import { downloadRoutes } from './routes/download.routes';
 import { playbackRoutes } from './routes/playback.routes';
 import { websocketRoutes } from './routes/websocket.routes';
 import { analyticsRoutes } from './routes/analytics.routes';
+import { analysisRoutes } from './routes/analysis.routes';
+import { AudioAnalysisService } from './services/audio-analysis.service';
 import path from 'path';
 
 // Extend Fastify types to include Prisma
 declare module 'fastify' {
   interface FastifyInstance {
     prisma: PrismaClient;
+    audioAnalysisService: AudioAnalysisService;
   }
 }
 
@@ -29,9 +32,11 @@ const app = Fastify({
 
 // Initialize Prisma client
 const prisma = new PrismaClient();
+const audioAnalysisService = new AudioAnalysisService();
 
 // Add Prisma to the app instance for use in routes
 app.decorate('prisma', prisma);
+app.decorate('audioAnalysisService', audioAnalysisService);
 
 // Register plugins
 async function registerPlugins() {
@@ -93,6 +98,9 @@ async function registerRoutes() {
   // Register analytics routes
   await app.register(analyticsRoutes);
 
+  // Register analysis routes
+  await app.register(analysisRoutes);
+
   // Register WebSocket routes
   await app.register(websocketRoutes);
 }
@@ -111,6 +119,7 @@ const signals = ['SIGINT', 'SIGTERM'];
 signals.forEach(signal => {
   process.on(signal, async () => {
     console.log(`Received ${signal}, shutting down gracefully...`);
+    audioAnalysisService.shutdown();
     await app.close();
     process.exit(0);
   });
@@ -123,6 +132,7 @@ async function start() {
     await registerRoutes();
 
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
+    audioAnalysisService.scheduleInitialScan();
     console.log(`🚀 Server listening on port ${env.PORT}`);
     console.log(`📝 Environment: ${env.NODE_ENV}`);
     console.log(`🎵 Download directory: ${env.DOWNLOAD_DIR}`);

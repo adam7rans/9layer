@@ -11,6 +11,7 @@ import {
 import YTDlpWrapper from '../utils/yt-dlp';
 import FileUtils from '../utils/file-utils';
 import { env } from '../config/environment';
+import { AudioAnalysisService } from './audio-analysis.service';
 
 type ActiveDownloadTracker = {
   controller: AbortController;
@@ -28,14 +29,23 @@ export class DownloadService extends EventEmitter {
   private activeDownloads: Map<string, ActiveDownloadTracker> = new Map();
   private playlistTracking: Map<string, { albumName: string; totalTracks: number; completedTracks: number; trackIds: string[]; }> = new Map();
   private maxConcurrentDownloads: number;
-  private cleanupTimer?: NodeJS.Timeout;
+  private cleanupTimer: NodeJS.Timeout | null = null;
+  private audioAnalysisService: AudioAnalysisService | undefined;
 
-  constructor(prisma: PrismaClient) {
+  constructor(prisma: PrismaClient, audioAnalysisService?: AudioAnalysisService) {
     super();
     this.prisma = prisma;
+    this.audioAnalysisService = audioAnalysisService;
     this.maxConcurrentDownloads = env.MAX_CONCURRENT_DOWNLOADS;
     this.setupEventHandlers();
     this.startCleanupTimer();
+  }
+
+  public destroy(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
   }
 
   /**
@@ -441,6 +451,7 @@ export class DownloadService extends EventEmitter {
 
         // Save to database
         const track = await this.saveTrackToDatabase(result.metadata, outputPath);
+        this.audioAnalysisService?.enqueueTrackAnalysis(track.id);
         this.updateJobStatus(jobId, 'completed');
         console.log(`[DOWNLOAD] Completed job ${jobId} (${videoInfo.title})`);
 
