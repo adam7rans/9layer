@@ -17,6 +17,9 @@ backend/.venv/
 
 # Node.js dependencies
 backend/node_modules/
+
+# Essentia models (large binary assets kept local)
+analysis/essentia_models/
 node_modules/
 
 # TypeScript compiled output
