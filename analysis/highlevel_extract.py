@@ -19,7 +19,6 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -32,20 +31,17 @@ class EssentiaHighLevelExtractor:
 
         self.models_root = Path(models_root)
 
+        # Import TensorFlow for model inference
         try:
-            from essentia.standard import (
-                MonoLoader,
-                TensorflowPredict2D,
-                TensorflowPredictEffnetDiscogs,
-            )
+            import tensorflow as tf
+            from essentia.standard import MonoLoader
         except ImportError as exc:  # pragma: no cover - import guarded
             raise ImportError(
-                "Essentia not found. Install with: pip install essentia-tensorflow"
+                "TensorFlow and Essentia not found. Install with: pip install tensorflow essentia-tensorflow"
             ) from exc
 
         self.MonoLoader = MonoLoader
-        self.TensorflowPredict2D = TensorflowPredict2D
-        self.TensorflowPredictEffnetDiscogs = TensorflowPredictEffnetDiscogs
+        self.tf = tf
 
         # Model paths
         self.models = {
@@ -83,6 +79,7 @@ class EssentiaHighLevelExtractor:
 
         self._verify_models()
         self.labels: Dict[str, List[str]] = {}
+        self._loaded_models: Dict[str, object] = {}
 
         for name, paths in self.models.items():
             if name != "embeddings" and paths["json"].exists():
@@ -107,75 +104,122 @@ class EssentiaHighLevelExtractor:
             joined = "\n  - ".join(missing)
             raise FileNotFoundError(f"Missing model files:\n  - {joined}")
 
+    def _load_graph_def(self, pb_path: Path) -> object:
+        """Load a TensorFlow GraphDef from a .pb file."""
+        graph_def = self.tf.compat.v1.GraphDef()
+        with open(pb_path, "rb") as f:
+            graph_def.ParseFromString(f.read())
+        return graph_def
+
+    def _get_graph_session(self, graph_def: object) -> tuple:
+        """Create a TensorFlow session for graph evaluation."""
+        graph = self.tf.Graph()
+        with graph.as_default():
+            self.tf.compat.v1.import_graph_def(graph_def, name="")
+        session = self.tf.compat.v1.Session(graph=graph)
+        return graph, session
+
     def extract_embeddings(self, audio_path: str) -> np.ndarray:
         """Extract Discogs EffNet embeddings from an audio file."""
 
-        audio = self.MonoLoader(filename=str(audio_path), sampleRate=16000)()
+        try:
+            import librosa
+        except ImportError:
+            raise ImportError("librosa is required for melspectrogram computation. Install with: pip install librosa")
 
-        candidate_nodes = ["PartitionedCall:1", "PartitionedCall", "embeddings"]
-        for node in candidate_nodes:
-            try:
-                model = self.TensorflowPredictEffnetDiscogs(
-                    graphFilename=str(self.models["embeddings"]["pb"]),
-                    output=node,
-                )
-                embeddings = model(audio)
-                logger.debug("Embeddings extracted via node %s with shape %s", node, embeddings.shape)
-                return embeddings
-            except RuntimeError as exc:
-                if "Cannot find tensor" in str(exc):
-                    continue
-                raise
-
-        raise RuntimeError(
-            "Could not extract embeddings. Tried nodes: "
-            + ", ".join(candidate_nodes)
-            + "."
+        # Load audio at 16kHz (standard for the model)
+        audio, sr = librosa.load(str(audio_path), sr=16000)
+        
+        # Compute melspectrogram with parameters matching the model expectations
+        # Shape should be [batch_size, time_steps, n_mels]
+        # The model expects [64, 128, 96] - 128 time steps, 96 mel bands
+        mel_spec = librosa.feature.melspectrogram(
+            y=audio,
+            sr=sr,
+            n_fft=2048,
+            hop_length=512,
+            n_mels=96,
+            fmin=0,
+            fmax=8000
         )
+        
+        # Convert power spectrogram to dB scale
+        mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
+        
+        # Transpose to get shape [time_steps, n_mels] (librosa returns [n_mels, time_steps])
+        mel_spec_db = mel_spec_db.T  # Now shape is [time_steps, 96]
+        
+        # Normalize to the expected shape [128, 96]
+        # Pad or truncate to 128 time steps
+        if mel_spec_db.shape[0] > 128:
+            mel_spec_db = mel_spec_db[:128, :]
+        elif mel_spec_db.shape[0] < 128:
+            mel_spec_db = np.pad(mel_spec_db, ((0, 128 - mel_spec_db.shape[0]), (0, 0)), mode='constant')
+        
+        # Create batch of 64 (model expects this) - shape will be [64, 128, 96]
+        mel_spec_batch = np.stack([mel_spec_db] * 64, axis=0).astype(np.float32)
+        
+        graph_def = self._load_graph_def(self.models["embeddings"]["pb"])
+        graph, session = self._get_graph_session(graph_def)
+
+        try:
+            # Get the input and output tensors
+            # PartitionedCall:0 returns shape (64, 512)
+            # PartitionedCall:1 returns shape (64, 1280) - this is what classifiers expect
+            input_tensor = graph.get_tensor_by_name("serving_default_melspectrogram:0")
+            output_tensor = graph.get_tensor_by_name("PartitionedCall:1")
+            
+            embeddings = session.run(output_tensor, feed_dict={input_tensor: mel_spec_batch})
+            logger.debug("Embeddings extracted with shape %s", embeddings.shape)
+            return embeddings
+        finally:
+            session.close()
 
     def classify(
         self,
         embeddings: np.ndarray,
         classifier_name: str,
-        input_node: str = "model/Placeholder",
     ) -> Dict[str, object]:
         """Run a specific classifier on embeddings and return prediction scores."""
 
         model_info = self.models[classifier_name]
-        output_nodes = ["model/Softmax", "model/Softmax:0"] if classifier_name == "genre" else [
-            "model/Sigmoid",
-            "model/Sigmoid:0",
-        ]
+        graph_def = self._load_graph_def(model_info["pb"])
+        graph, session = self._get_graph_session(graph_def)
 
-        for output in output_nodes:
-            try:
-                predictor = self.TensorflowPredict2D(
-                    graphFilename=str(model_info["pb"]),
-                    input=input_node,
-                    output=output,
-                )
-                logits = predictor(embeddings)
-                scores = np.mean(logits, axis=0)
-
-                labels = self.labels.get(classifier_name, [])
-                results = {label: float(scores[idx]) for idx, label in enumerate(labels) if idx < len(scores)}
-                if not results:
-                    return {"all": results}
-
-                top_label, top_score = max(results.items(), key=lambda item: item[1])
-                return {
-                    "value": top_label,
-                    "probability": top_score,
-                    "all": results,
-                }
-            except RuntimeError as exc:
-                if "Cannot find tensor" in str(exc):
-                    continue
-                raise
-
-        raise RuntimeError(
-            f"Could not run {classifier_name} classifier. Tried nodes: {', '.join(output_nodes)}"
-        )
+        try:
+            # Try common input/output node names (model/Placeholder and model/Sigmoid are most common)
+            input_nodes = ["model/Placeholder:0", "serving_default_input:0", "input:0"]
+            output_nodes = ["model/Sigmoid:0", "model/Softmax:0", "PartitionedCall:0", "output:0"]
+            
+            for input_node in input_nodes:
+                for output_node in output_nodes:
+                    try:
+                        input_tensor = graph.get_tensor_by_name(input_node)
+                        output_tensor = graph.get_tensor_by_name(output_node)
+                        
+                        logits = session.run(output_tensor, feed_dict={input_tensor: embeddings})
+                        scores = np.mean(logits, axis=0) if len(logits.shape) > 1 else logits
+                        
+                        labels = self.labels.get(classifier_name, [])
+                        results = {label: float(scores[idx]) for idx, label in enumerate(labels) if idx < len(scores)}
+                        
+                        if not results:
+                            return {"all": results}
+                        
+                        top_label, top_score = max(results.items(), key=lambda item: item[1])
+                        return {
+                            "value": top_label,
+                            "probability": top_score,
+                            "all": results,
+                        }
+                    except (KeyError, ValueError, RuntimeError):
+                        continue
+            
+            raise RuntimeError(
+                f"Could not run {classifier_name} classifier. Tried input nodes: {input_nodes}, output nodes: {output_nodes}"
+            )
+        finally:
+            session.close()
 
     def analyze(
         self,
