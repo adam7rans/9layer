@@ -171,7 +171,16 @@ class EssentiaHighLevelExtractor:
             
             embeddings = session.run(output_tensor, feed_dict={input_tensor: mel_spec_batch})
             logger.debug("Embeddings extracted with shape %s", embeddings.shape)
-            return embeddings
+
+            # L2 normalize embeddings (standard for contrastive learning models)
+            # Each row is normalized to unit length
+            norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+            embeddings_normalized = embeddings / (norms + 1e-8)  # Add epsilon to avoid division by zero
+            logger.debug("Embeddings normalized: min/max %.3f/%.3f, mean/std %.3f/%.3f",
+                        embeddings_normalized.min(), embeddings_normalized.max(),
+                        embeddings_normalized.mean(), embeddings_normalized.std())
+
+            return embeddings_normalized
         finally:
             session.close()
 
