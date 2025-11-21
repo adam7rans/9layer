@@ -50,15 +50,38 @@ class TrackAnalysisResult:
 
     track_id: str
     analysis_version: str
+
+    # Rhythm features
     tempo_bpm: Optional[float]
-    energy_level: Optional[float]
+    danceability: Optional[float] = None
+
+    # Energy and dynamics
+    energy_level: Optional[float] = None
+    loudness: Optional[float] = None
+    dynamic_complexity: Optional[float] = None
+
+    # Tonal features
+    musical_key: Optional[str] = None
+    musical_scale: Optional[str] = None
+    key_strength: Optional[float] = None
+
+    # Timbre and spectral
+    brightness: Optional[float] = None
+    warmth: Optional[float] = None
+    dissonance: Optional[float] = None
+
+    # High-level classifications
     genres: List[str] = field(default_factory=list)
     moods: List[str] = field(default_factory=list)
     instrumentation: InstrumentationSummary = field(default_factory=InstrumentationSummary)
+
+    # Metadata
     composition_year: Optional[int] = None
     composition_decade: Optional[int] = None
     keywords: List[str] = field(default_factory=list)
     summary: Optional[str] = None
+
+    # Advanced features
     embedding: Optional[Dict[str, Sequence[float]]] = None
     payload: Dict[str, object] = field(default_factory=dict)
 
@@ -72,16 +95,32 @@ class TrackAnalysisResult:
         return {
             "track_id": self.track_id,
             "analysis_version": self.analysis_version,
+            # Rhythm
             "tempo_bpm": self.tempo_bpm,
+            "danceability": self.danceability,
+            # Energy and dynamics
             "energy_level": self.energy_level,
+            "loudness": self.loudness,
+            "dynamic_complexity": self.dynamic_complexity,
+            # Tonal
+            "musical_key": self.musical_key,
+            "musical_scale": self.musical_scale,
+            "key_strength": self.key_strength,
+            # Timbre and spectral
+            "brightness": self.brightness,
+            "warmth": self.warmth,
+            "dissonance": self.dissonance,
+            # High-level classifications
             "genres": self.genres,
             "moods": self.moods,
             "instrumentation": self.instrumentation.as_record(),
             "instrumentation_count": self.instrumentation.count,
+            # Metadata
             "composition_year": self.composition_year,
             "composition_decade": decade,
             "keywords": self.keywords,
             "summary": self.summary,
+            # Advanced
             "embedding": self.embedding,
             "payload": self.payload,
         }

@@ -69,18 +69,41 @@ model TrackAudioAnalysis {
   trackId            String   @unique
   analysisVersion    String
   analyzedAt         DateTime @default(now())
+
+  // Rhythm features
   tempoBpm           Float?
+  danceability       Float?
+
+  // Energy and dynamics
   energyLevel        Float?
+  loudness           Float?
+  dynamicComplexity  Float?
+
+  // Tonal features
+  musicalKey         String?   // e.g., "C", "Ab", "F#"
+  musicalScale       String?   // "major" or "minor"
+  keyStrength        Float?    // confidence of key detection
+
+  // Timbre and spectral
+  brightness         Float?    // spectral centroid
+  warmth             Float?    // low frequency energy
+  dissonance         Float?
+
+  // High-level classifications
   genres             String[]
   moods              String[]
   instrumentation    Json?
   instrumentationCount Int?
+
+  // Metadata
   compositionYear    Int?
   compositionDecade  Int?
   keywords           String[]
   summary            String?
-  embedding          Json?
-  payload            Json?
+
+  // Advanced features
+  embedding          Json?     // 1280-dim vector for similarity
+  payload            Json?     // Full Essentia feature set
 
   track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
 

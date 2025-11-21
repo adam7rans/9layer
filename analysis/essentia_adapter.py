@@ -54,9 +54,8 @@ class EssentiaAdapter:
             ) from _IMPORT_EXCEPTION
         self._config = config
 
+        # Note: MusicExtractor in this Essentia version doesn't support modelDirectory parameter
         extractor_kwargs: Dict[str, Any] = {"lowlevelSilentFrames": "drop"}
-        if config.model_dir:
-            extractor_kwargs["modelDirectory"] = str(config.model_dir)
 
         self._music_extractor = es.MusicExtractor(**extractor_kwargs)
         self._rhythm_extractor = es.RhythmExtractor2013(method="multifeature")
@@ -105,7 +104,25 @@ class EssentiaAdapter:
         if not moods:
             moods = self._extract_list(features, "highlevel.mood_acoustic.probability")
 
-        energy = self._extract_float(features, "lowlevel.dynamics.loudness.mean")
+        # Extract all low-level features
+        energy = self._extract_float(features, "lowlevel.average_loudness")
+        loudness = energy  # Use average_loudness as primary loudness measure
+        dynamic_complexity = self._extract_float(features, "lowlevel.dynamic_complexity")
+
+        # Rhythm features
+        danceability = self._extract_float(features, "rhythm.danceability")
+
+        # Tonal features (key and scale)
+        musical_key = self._resolve_key(features, "tonal.chords_key")
+        musical_scale = self._resolve_key(features, "tonal.chords_scale")
+        key_strength = self._extract_float(features, "tonal.chords_strength.mean")
+
+        # Timbre and spectral features
+        brightness = self._extract_float(features, "lowlevel.spectral_centroid.mean")
+        # Use spectral rolloff as proxy for warmth (lower rolloff = more low freq energy)
+        warmth_rolloff = self._extract_float(features, "lowlevel.spectral_rolloff.mean")
+        warmth = (8000.0 - warmth_rolloff) / 8000.0 if warmth_rolloff else None
+        dissonance = self._extract_float(features, "lowlevel.dissonance.mean")
 
         instrumentation = self._instrumentation_from_highlevel(highlevel_results.get("instrument"))
         if instrumentation is None:
@@ -129,15 +146,31 @@ class EssentiaAdapter:
         return TrackAnalysisResult(
             track_id=track_id,
             analysis_version=analysis_version,
+            # Rhythm
             tempo_bpm=tempo,
+            danceability=danceability,
+            # Energy and dynamics
             energy_level=energy,
+            loudness=loudness,
+            dynamic_complexity=dynamic_complexity,
+            # Tonal
+            musical_key=str(musical_key) if musical_key else None,
+            musical_scale=str(musical_scale) if musical_scale else None,
+            key_strength=key_strength,
+            # Timbre and spectral
+            brightness=brightness,
+            warmth=warmth,
+            dissonance=dissonance,
+            # High-level classifications
             genres=genres,
             moods=moods,
             instrumentation=instrumentation,
+            # Metadata
             composition_year=self._estimate_year(features),
             composition_decade=None,
             keywords=keywords,
             summary=TrackAnalysisResult.build_summary(genres, moods, tempo),
+            # Advanced
             embedding=embedding,
             payload=payload,
         )
