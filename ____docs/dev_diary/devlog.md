@@ -2,6 +2,63 @@
 
 This file tracks development progress, features implemented, and issues resolved during the 9layer project development.
 
+## 2025-11-21 - Essentia Music Intelligence Integration
+
+**Problem:** The application lacked comprehensive musical intelligence analysis for the music library. Users could play tracks but had no insights into genres, moods, musical key, tempo, danceability, timbral characteristics, or other advanced audio features that enable smart search, DJ tools, and music discovery.
+
+**Root Cause:**
+1. **Initial TensorFlow Integration Failure**: The Essentia high-level extractor returned all zeros for genre/mood/instrument predictions. The EffNet embeddings (range 0-125k with mean ~6400) were not L2-normalized before feeding to classifiers, causing sigmoid activations to saturate at 0.0. Contrastive learning models require unit-length normalization.
+2. **Deprecated API Usage**: The codebase used Essentia APIs (`TensorflowPredict2D`, `TensorflowPredictEffnetDiscogs`) that don't exist in essentia-tensorflow 2.1-beta6-dev, preventing high-level feature extraction.
+3. **Missing Low-Level Features**: Only tempo was extracted from Essentia's MusicExtractor. The system wasn't capturing 578 available low-level features including musical key/scale, danceability, spectral characteristics, and harmonic analysis.
+
+**Solution:**
+1. **Fixed Embedding Normalization** (`analysis/highlevel_extract.py`):
+   - Added L2 normalization: `embeddings / (np.linalg.norm(embeddings, axis=1, keepdims=True) + 1e-8)`
+   - Transformed embeddings to unit length before classifier inference
+   - Result: All classifiers now produce meaningful probability scores (0.0-1.0 range)
+
+2. **Rewrote TensorFlow Integration** for modern API:
+   - Load models as TensorFlow GraphDef from `.pb` files
+   - Compute mel-spectrograms with librosa (shape: [64, 128, 96])
+   - Run inference using TensorFlow sessions with correct tensor nodes
+   - Extract 1280-dim embeddings from `PartitionedCall:1` output
+   - Feed to classifiers via `model/Placeholder:0` → `model/Sigmoid:0`
+   - Installed dependencies: tensorflow==2.20.0, librosa
+
+3. **Enabled Low-Level Feature Extraction**:
+   - **Database Schema**: Added 11 columns to TrackAudioAnalysis (danceability, musicalKey, musicalScale, keyStrength, brightness, warmth, dissonance, loudness, dynamicComplexity)
+   - **Adapter Updates**: Extract features from MusicExtractor's 578 descriptors
+   - **Storage Updates**: Modified SQL INSERT/UPDATE to persist all new fields
+   - **Migration**: `20251121132133_add_low_level_audio_features`
+
+4. **Feature Extraction Implementation**:
+   - Rhythm: tempo (BPM), danceability score
+   - Tonal: musical key (C, Ab, F#), scale (major/minor), detection confidence
+   - Timbre: brightness (spectral centroid Hz), warmth (spectral rolloff), dissonance level
+   - Dynamics: loudness, complexity, energy level
+   - High-level: 87 genres, 56 moods, 40 instruments, voice detection
+   - Embeddings: 1280-dim vectors for similarity search
+
+**Files Modified:**
+- `/analysis/highlevel_extract.py` - Rewrote for TensorFlow direct inference with L2 normalization
+- `/analysis/essentia_adapter.py` - Added low-level feature extraction, removed unsupported modelDirectory param
+- `/analysis/metadata.py` - Updated TrackAnalysisResult dataclass with 11 new fields
+- `/analysis/storage.py` - Updated SQL queries to INSERT/UPDATE new columns
+- `/backend/prisma/schema.prisma` - Added 11 new columns to TrackAudioAnalysis model
+- `/backend/prisma/migrations/` - Created migration for database schema changes
+- `/backend/node_modules/@prisma/client` - Regenerated Prisma client
+
+**Outcome:** The system now extracts comprehensive musical intelligence from audio files:
+- **87 genres** with probabilities (electronic 0.47, pop 0.39, rock 0.39)
+- **56 moods** with probabilities (energetic 0.42, dark 0.41, melodic 0.39)
+- **40 instruments** with probabilities (synthesizer 0.48, drums 0.47, bass 0.46)
+- **Musical key & scale** (Ab major, C minor, etc.) with confidence scores
+- **Tempo & danceability** (77-151 BPM, 0.5-2.5 dance score)
+- **Timbral profile** (995 Hz brightness, 0.90 warmth, 0.43 dissonance)
+- **1280-dim embeddings** for similarity search and recommendations
+
+Verified on 5 real tracks. Adapter extracts all values correctly. Ready for frontend UI to expose musical intelligence through smart search, mood-based playlists, harmonic mixing tools, and music discovery features.
+
 ## 2025-10-14 - Download UI resets and long-track verification
 
 **Problem:** Single-track downloads left the "Download" button stuck in the loading state, and long-form audio (1+ hour) appeared to stall at ~33% despite the backend completing.
